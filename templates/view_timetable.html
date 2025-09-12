@@ -1,63 +1,151 @@
-@app.route('/debug/timetable/<int:timetable_id>')
-@admin_required
-def debug_timetable(timetable_id):
-    """Debug route to see raw timetable data"""
-    conn = sqlite3.connect('timetable.db')
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+{% extends "base.html" %}
+
+{% block title %}{{ timetable_info.name }} - Timetable View{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1><i class="fas fa-table"></i> {{ timetable_info.name }}</h1>
+        <p class="text-muted mb-0">
+            {{ timetable_info.department_name }} - Semester {{ timetable_info.semester }}
+            {% if timetable_info.fitness_score %}
+                <span class="badge bg-{{ 'success' if timetable_info.fitness_score > 800 else 'warning' if timetable_info.fitness_score > 600 else 'danger' }} ms-2">
+                    Fitness: {{ "%.1f"|format(timetable_info.fitness_score) }}
+                </span>
+            {% endif %}
+        </p>
+    </div>
+    <div>
+        <a href="{{ url_for('timetables') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Timetables
+        </a>
+        <button class="btn btn-primary" onclick="window.print()">
+            <i class="fas fa-print"></i> Print
+        </button>
+    </div>
+</div>
+
+{% if organized_slots %}
+    {% for batch_id, batch_data in organized_slots.items() %}
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-users"></i> {{ batch_data.batch_name }}</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 120px;">Time/Day</th>
+                            {% for day in days %}
+                            <th class="text-center">{{ day }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for time_slot in time_slots %}
+                        <tr>
+                            <td class="fw-bold bg-light">{{ time_slot }}</td>
+                            {% for day in days %}
+                            <td class="text-center">
+                                {% if batch_data.schedule[day][time_slot] %}
+                                    {% set slot = batch_data.schedule[day][time_slot] %}
+                                    <div class="timetable-slot">
+                                        <div class="subject-name fw-bold">{{ slot.subject_name or 'No Subject' }}</div>
+                                        <div class="subject-code text-muted small">{{ slot.subject_code or '' }}</div>
+                                        <div class="faculty-name text-primary small">{{ slot.faculty_name or 'No Faculty' }}</div>
+                                        <div class="classroom-name text-success small">{{ slot.classroom_name or 'No Room' }}</div>
+                                    </div>
+                                {% else %}
+                                    <div class="text-muted">-</div>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle"></i>
+        No timetable data found for this timetable.
+    </div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+.timetable-slot {
+    padding: 8px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    transition: background-color 0.3s;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.timetable-slot:hover {
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+}
+
+.subject-name {
+    color: #495057;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.subject-code, .faculty-name, .classroom-name {
+    font-size: 0.75rem;
+    margin-top: 2px;
+}
+
+.table td {
+    vertical-align: middle;
+    padding: 4px;
+}
+
+@media (max-width: 768px) {
+    .table {
+        font-size: 0.8rem;
+    }
     
-    # Get timetable info
-    cursor.execute('SELECT * FROM timetables WHERE id = ?', (timetable_id,))
-    timetable = cursor.fetchone()
+    .timetable-slot {
+        min-height: 60px;
+        padding: 4px;
+    }
     
-    # Get all slots
-    cursor.execute('''
-        SELECT ts.*, s.name as subject_name, f.name as faculty_name, 
-               c.name as classroom_name, b.name as batch_name
-        FROM timetable_slots ts
-        LEFT JOIN subjects s ON ts.subject_id = s.id
-        LEFT JOIN faculty f ON ts.faculty_id = f.id
-        LEFT JOIN classrooms c ON ts.classroom_id = c.id
-        LEFT JOIN batches b ON ts.batch_id = b.id
-        WHERE ts.timetable_id = ?
-        ORDER BY ts.batch_id, ts.day, ts.time_slot
-    ''', (timetable_id,))
+    .subject-name {
+        font-size: 0.8rem;
+    }
     
-    slots = cursor.fetchall()
-    
-    conn.close()
-    
-    # Create HTML response with raw data
-    html = f"""
-    <h1>Debug: Timetable {timetable_id}</h1>
-    <h3>Timetable Info:</h3>
-    <pre>{dict(timetable) if timetable else 'No timetable found'}</pre>
-    
-    <h3>Slots ({len(slots)} found):</h3>
-    <table border="1">
-        <tr>
-            <th>ID</th>
-            <th>Batch</th>
-            <th>Day</th>
-            <th>Time</th>
-            <th>Subject</th>
-            <th>Faculty</th>
-            <th>Classroom</th>
-        </tr>
-    """
-    
-    for slot in slots:
-        html += f"""
-        <tr>
-            <td>{slot['id']}</td>
-            <td>{slot['batch_id']} ({slot['batch_name']})</td>
-            <td>{slot['day']}</td>
-            <td>{slot['time_slot']}</td>
-            <td>{slot['subject_id']} ({slot['subject_name']})</td>
-            <td>{slot['faculty_id']} ({slot['faculty_name']})</td>
-            <td>{slot['classroom_id']} ({slot['classroom_name']})</td>
-        </tr>
-        """
-    
-    html += "</table>"
-    return html
+    .subject-code, .faculty-name, .classroom-name {
+        font-size: 0.7rem;
+    }
+}
+</style>
+
+<script>
+// Add some interactive features
+document.addEventListener('DOMContentLoaded', function() {
+    // Add hover effects to timetable cells
+    const timetableCells = document.querySelectorAll('.timetable-slot');
+    timetableCells.forEach(cell => {
+        cell.addEventListener('mouseenter', function() {
+            this.style.transform = 'scale(1.02)';
+            this.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+        });
+        cell.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+            this.style.boxShadow = 'none';
+        });
+    });
+});
+</script>
+{% endblock %}

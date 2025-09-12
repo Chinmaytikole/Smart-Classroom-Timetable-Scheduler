@@ -267,7 +267,7 @@ def timetables():
     timetables = cursor.fetchall()
     
     conn.close()
-    return render_template('timetables.html', timetables=timetables)
+    return render_template('view_timetable.html', timetables=timetables)
 
 @app.route('/generate_timetable')
 @login_required
@@ -380,6 +380,7 @@ def generate_timetable_process():
 @app.route('/timetable/<int:timetable_id>')
 @login_required
 def view_timetable(timetable_id):
+    print(f"Viewing timetable ID: {timetable_id}")
     try:
         conn = sqlite3.connect('timetable.db')
         conn.row_factory = sqlite3.Row
@@ -399,8 +400,8 @@ def view_timetable(timetable_id):
             return redirect(url_for('timetables'))
         
         timetable_info = dict(timetable_row)
-        print(f"Viewing timetable: {timetable_info['name']}")
-        
+        print(f"Timetable info: {timetable_info}")
+
         # Get timetable slots
         cursor.execute('''
             SELECT ts.*, s.name as subject_name, s.code as subject_code, 
@@ -416,32 +417,23 @@ def view_timetable(timetable_id):
         ''', (timetable_id,))
         
         slots = cursor.fetchall()
-        print(f"Found {len(slots)} timetable slots")
-        
-        # Debug: Print some slot data
-        for i, slot in enumerate(slots[:5]):  # Print first 5 slots
-            print(f"Slot {i}: Batch={slot['batch_id']}, Day={slot['day']}, Time={slot['time_slot']}, Subject={slot['subject_name']}")
-        
+        print(f"Fetched {len(slots)} timetable slots")
+
         # Organize slots by batch and day/time
         organized_slots = {}
         days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
         time_slots = ['9:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-1:00', '1:00-2:00', '2:00-3:00', '3:00-4:00', '4:00-5:00']
         
-        # Initialize empty structure for all batches
-        cursor.execute('''
-            SELECT b.id, b.name 
-            FROM batches b
-            WHERE b.department_id = ? AND b.semester = ?
-        ''', (timetable_info['department_id'], timetable_info['semester']))
+        # Initialize structure for all batches in this timetable
+        for slot in slots:
+            batch_id = slot['batch_id']
+            if batch_id not in organized_slots:
+                organized_slots[batch_id] = {
+                    'batch_name': slot['batch_name'],
+                    'schedule': {day: {time: None for time in time_slots} for day in days}
+                }
         
-        batches = cursor.fetchall()
-        for batch in batches:
-            organized_slots[batch['id']] = {
-                'batch_name': batch['name'],
-                'schedule': {day: {time: None for time in time_slots} for day in days}
-            }
-        
-        # Fill in the actual slot data
+        # Fill in the slot data
         for slot in slots:
             batch_id = slot['batch_id']
             day = slot['day']
@@ -451,19 +443,9 @@ def view_timetable(timetable_id):
                 day in organized_slots[batch_id]['schedule'] and 
                 time_slot in organized_slots[batch_id]['schedule'][day]):
                 organized_slots[batch_id]['schedule'][day][time_slot] = slot
-            else:
-                print(f"Warning: Could not place slot - Batch: {batch_id}, Day: {day}, Time: {time_slot}")
-        
-        # Debug: Check organized structure
-        print(f"Organized into {len(organized_slots)} batches")
-        for batch_id, batch_data in organized_slots.items():
-            print(f"Batch {batch_id} ({batch_data['batch_name']}):")
-            for day, day_schedule in batch_data['schedule'].items():
-                filled_slots = sum(1 for time_slot, slot_data in day_schedule.items() if slot_data)
-                print(f"  {day}: {filled_slots} filled slots")
-        
+
         conn.close()
-        
+        print(f"Organized slots for {organized_slots} batches")
         return render_template('view_timetable.html', 
                              timetable_info=timetable_info,
                              organized_slots=organized_slots,
@@ -472,11 +454,10 @@ def view_timetable(timetable_id):
                              
     except Exception as e:
         print(f"Error viewing timetable: {str(e)}")
-        import traceback
-        traceback.print_exc()
+
         flash(f'Error loading timetable: {str(e)}', 'error')
         return redirect(url_for('timetables'))
-# Add this function to create a custom filter for average calculation
+    
 @app.template_filter('average')
 def average_filter(sequence):
     try:
