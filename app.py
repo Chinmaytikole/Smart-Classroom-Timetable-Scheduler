@@ -124,6 +124,28 @@ def init_db():
             FOREIGN KEY (classroom_id) REFERENCES classrooms (id)
         )
     ''')
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS faculty_subjects (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        faculty_id INTEGER NOT NULL,
+        subject_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (faculty_id) REFERENCES faculty (id),
+        FOREIGN KEY (subject_id) REFERENCES subjects (id),
+        UNIQUE(faculty_id, subject_id)
+    )
+    ''')
+    # Add faculty_leaves table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS faculty_leaves (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            faculty_id INTEGER NOT NULL,
+            avg_leaves_per_month REAL DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (faculty_id) REFERENCES faculty (id)
+        )
+    ''')
+
     
     # Create default admin user if not exists
     cursor.execute("SELECT COUNT(*) FROM users WHERE username = 'admin'")
@@ -136,6 +158,8 @@ def init_db():
     
     conn.commit()
     conn.close()
+
+
 
 # Login required decorator
 def login_required(f):
@@ -267,7 +291,7 @@ def timetables():
     timetables = cursor.fetchall()
     
     conn.close()
-    return render_template('view_timetable.html', timetables=timetables)
+    return render_template('timetables.html', timetables=timetables)
 
 @app.route('/generate_timetable')
 @login_required
@@ -323,13 +347,36 @@ def generate_timetable_process():
     
     # Define constraints
     constraints = {
-        'days': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-        'time_slots': ['9:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-1:00', '1:00-2:00', '2:00-3:00', '3:00-4:00', '4:00-5:00'],
-        'lunch_break': '12:00-1:00',
-        'max_classes_per_day': 6,
-        'max_hours_per_faculty': 8
-    }
-    
+    'days': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+    'time_slots': ['9:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-1:00', '1:00-2:00', '2:00-3:00', '3:00-4:00', '4:00-5:00'],
+    'lunch_break': '12:00-1:00',
+    'max_classes_per_day_per_batch': 6,  # Maximum classes per day per batch
+    'max_hours_per_faculty': 8,
+    'fixed_slots': get_fixed_slots()  # You'll need to implement this
+}
+    def get_fixed_slots(self):
+        """Get fixed slots from database"""
+        conn = sqlite3.connect('timetable.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT batch_id, day, time_slot, subject_id, faculty_id, classroom_id
+            FROM fixed_slots
+        ''')
+        
+        fixed_slots = []
+        for row in cursor.fetchall():
+            fixed_slots.append({
+                'batch_id': row[0],
+                'day': row[1],
+                'time_slot': row[2],
+                'subject_id': row[3],
+                'faculty_id': row[4],
+                'classroom_id': row[5]
+            })
+        
+        conn.close()
+        return fixed_slots
     try:
         # Initialize and run genetic algorithm
         genetic_timetable = EnhancedGeneticTimetable(subjects, faculty, classrooms, batches, constraints)
@@ -1051,6 +1098,150 @@ def delete_batch():
         conn.close()
     
     return redirect(url_for('batches'))
+
+@app.route('/delete_timetable/<int:timetable_id>', methods=['POST'])
+@admin_required
+def delete_timetable(timetable_id):
+    """Delete a timetable and all its associated slots"""
+    try:
+        conn = sqlite3.connect('timetable.db')
+        cursor = conn.cursor()
+        
+        # First get timetable name for flash message
+        cursor.execute('SELECT name FROM timetables WHERE id = ?', (timetable_id,))
+        timetable = cursor.fetchone()
+        
+        if not timetable:
+            flash('Timetable not found!', 'error')
+            return redirect(url_for('timetables'))
+        
+        timetable_name = timetable[0]
+        
+        # Delete timetable slots first (foreign key constraint)
+        cursor.execute('DELETE FROM timetable_slots WHERE timetable_id = ?', (timetable_id,))
+        
+        # Delete the timetable
+        cursor.execute('DELETE FROM timetables WHERE id = ?', (timetable_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        flash(f'Timetable "{timetable_name}" has been deleted successfully!', 'success')
+        
+    except Exception as e:
+        conn.rollback()
+        print(f"Error deleting timetable: {str(e)}")
+        flash(f'Error deleting timetable: {str(e)}', 'error')
+    finally:
+        if conn:
+            conn.close()
+    
+    return redirect(url_for('timetables'))
+
+# Add faculty subject management routes
+@app.route('/faculty/<int:faculty_id>/subjects')
+@login_required
+def faculty_subjects(faculty_id):
+    """Get subjects taught by a faculty member"""
+    conn = sqlite3.connect('timetable.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Get faculty info
+    cursor.execute('SELECT * FROM faculty WHERE id = ?', (faculty_id,))
+    faculty = dict(cursor.fetchone())
+    
+    # Get subjects taught by this faculty
+    cursor.execute('''
+        SELECT s.* 
+        FROM subjects s
+        JOIN faculty_subjects fs ON s.id = fs.subject_id
+        WHERE fs.faculty_id = ?
+        ORDER BY s.name
+    ''', (faculty_id,))
+    faculty_subjects = [dict(row) for row in cursor.fetchall()]
+    
+    # Get all available subjects
+    cursor.execute('SELECT * FROM subjects ORDER BY name')
+    all_subjects = [dict(row) for row in cursor.fetchall()]
+    
+    conn.close()
+    
+    return render_template('faculty_subjects.html', 
+                         faculty=faculty,
+                         faculty_subjects=faculty_subjects,
+                         all_subjects=all_subjects)
+
+@app.route('/add_faculty_subject', methods=['POST'])
+@admin_required
+def add_faculty_subject():
+    """Add a subject to a faculty member"""
+    faculty_id = request.form['faculty_id']
+    subject_id = request.form['subject_id']
+    
+    conn = sqlite3.connect('timetable.db')
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute(
+            'INSERT INTO faculty_subjects (faculty_id, subject_id) VALUES (?, ?)',
+            (faculty_id, subject_id)
+        )
+        conn.commit()
+        flash('Subject added to faculty successfully!', 'success')
+    except sqlite3.IntegrityError:
+        flash('This faculty already teaches this subject!', 'error')
+    except Exception as e:
+        flash(f'Error adding subject: {str(e)}', 'error')
+    finally:
+        conn.close()
+    
+    return redirect(url_for('faculty_subjects', faculty_id=faculty_id))
+
+@app.route('/remove_faculty_subject/<int:faculty_id>/<int:subject_id>')
+@admin_required
+def remove_faculty_subject(faculty_id, subject_id):
+    """Remove a subject from a faculty member"""
+    conn = sqlite3.connect('timetable.db')
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute(
+            'DELETE FROM faculty_subjects WHERE faculty_id = ? AND subject_id = ?',
+            (faculty_id, subject_id)
+        )
+        conn.commit()
+        flash('Subject removed from faculty successfully!', 'success')
+    except Exception as e:
+        flash(f'Error removing subject: {str(e)}', 'error')
+    finally:
+        conn.close()
+    
+    return redirect(url_for('faculty_subjects', faculty_id=faculty_id))
+
+def get_faculty_subjects(faculty_id):
+    """Helper function to get subjects taught by a faculty member"""
+    conn = sqlite3.connect('timetable.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT s.code, s.name 
+        FROM subjects s
+        JOIN faculty_subjects fs ON s.id = fs.subject_id
+        WHERE fs.faculty_id = ?
+        ORDER BY s.code
+    ''', (faculty_id,))
+    
+    subjects = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return subjects
+
+# Make the function available to templates
+@app.context_processor
+def utility_processor():
+    return dict(get_faculty_subjects=get_faculty_subjects)
 
 if __name__ == '__main__':
     # Create upload directory if it doesn't exist

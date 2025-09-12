@@ -2,6 +2,7 @@
 import random
 import numpy as np
 from copy import deepcopy
+import sqlite3
 
 class GeneticTimetable:
     def __init__(self, subjects, faculty, classrooms, batches, constraints):
@@ -278,6 +279,13 @@ class GeneticTimetable:
                 
         return best_timetable, best_fitness
 
+# genetic_algorithm.py
+import random
+import numpy as np
+from copy import deepcopy
+import sqlite3
+from datetime import datetime
+
 class EnhancedGeneticTimetable(GeneticTimetable):
     def __init__(self, subjects, faculty, classrooms, batches, constraints):
         super().__init__(subjects, faculty, classrooms, batches, constraints)
@@ -285,8 +293,28 @@ class EnhancedGeneticTimetable(GeneticTimetable):
         self.generations = 1000
         self.mutation_rate = 0.15
         self.crossover_rate = 0.85
-        self.elitism_rate = 0.1  # Keep best 10% in each generation
+        self.elitism_rate = 0.1
         
+        # Additional constraints
+        self.max_classes_per_day_per_batch = constraints.get('max_classes_per_day_per_batch', 6)
+        self.fixed_slots = constraints.get('fixed_slots', {})
+        self.faculty_leaves = self.load_faculty_leaves()
+        
+    def load_faculty_leaves(self):
+        """Load faculty leave information from database"""
+        conn = sqlite3.connect('timetable.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT faculty_id, avg_leaves_per_month FROM faculty_leaves')
+        leaves_data = cursor.fetchall()
+        
+        faculty_leaves = {}
+        for faculty_id, avg_leaves in leaves_data:
+            faculty_leaves[faculty_id] = avg_leaves
+            
+        conn.close()
+        return faculty_leaves
+    
     def calculate_fitness(self, timetable):
         fitness_score = 1000  # Start with perfect score
         
@@ -298,58 +326,303 @@ class EnhancedGeneticTimetable(GeneticTimetable):
         consecutive_class_violations = self.check_consecutive_classes(timetable) * 25
         lunch_break_violations = self.check_lunch_breaks(timetable) * 15
         
+        # New constraint violations
+        subject_distribution_violations = self.check_subject_distribution(timetable) * 40
+        max_classes_violations = self.check_max_classes_per_day(timetable) * 35
+        fixed_slots_violations = self.check_fixed_slots(timetable) * 60
+        faculty_availability_violations = self.check_faculty_availability(timetable) * 25
+        
         total_violations = (faculty_conflicts + classroom_conflicts + 
                           workload_violations + time_preference_violations +
-                          consecutive_class_violations + lunch_break_violations)
+                          consecutive_class_violations + lunch_break_violations +
+                          subject_distribution_violations + max_classes_violations +
+                          fixed_slots_violations + faculty_availability_violations)
         
         fitness_score = max(0, fitness_score - total_violations)
-        
-        # Bonus for good distribution of subjects
-        subject_distribution_score = self.check_subject_distribution(timetable) * 10
-        fitness_score += subject_distribution_score
         
         return fitness_score
     
     def check_subject_distribution(self, timetable):
-        score = 0
+        """Check if subjects have correct number of classes per week"""
+        violations = 0
+        
         for batch_id, schedule in timetable.items():
             subject_count = {}
+            
+            # Count classes for each subject
             for day, time_slots in schedule.items():
                 for time_slot, slot_data in time_slots.items():
                     if slot_data:
                         subject_id = slot_data['subject_id']
                         subject_count[subject_id] = subject_count.get(subject_id, 0) + 1
             
-            # Check if subjects are evenly distributed
-            subject = self.subject_map.get(list(subject_count.keys())[0] if subject_count else None)
-            if subject:
-                expected_classes = subject.get('classes_per_week', 3)
-                for count in subject_count.values():
-                    if abs(count - expected_classes) <= 1:  # Allow some flexibility
-                        score += 1
-        return score
+            # Check against required classes per week
+            for subject_id, actual_count in subject_count.items():
+                subject = self.subject_map.get(subject_id)
+                if subject:
+                    required_count = subject.get('classes_per_week', 3)
+                    if actual_count != required_count:
+                        violations += abs(actual_count - required_count)
+        
+        return violations
+    
+    def check_max_classes_per_day(self, timetable):
+        """Check maximum classes per day per batch constraint"""
+        violations = 0
+        
+        for batch_id, schedule in timetable.items():
+            for day, time_slots in schedule.items():
+                class_count = sum(1 for time_slot, slot_data in time_slots.items() 
+                                if slot_data and time_slot != self.lunch_break)
+                
+                if class_count > self.max_classes_per_day_per_batch:
+                    violations += (class_count - self.max_classes_per_day_per_batch)
+        
+        return violations
+    
+    def check_fixed_slots(self, timetable):
+        """Check if fixed slots are respected"""
+        violations = 0
+        
+        for fixed_slot in self.fixed_slots:
+            batch_id = fixed_slot['batch_id']
+            day = fixed_slot['day']
+            time_slot = fixed_slot['time_slot']
+            required_subject_id = fixed_slot['subject_id']
+            required_faculty_id = fixed_slot.get('faculty_id')
+            required_classroom_id = fixed_slot.get('classroom_id')
+            
+            if batch_id in timetable and day in timetable[batch_id]:
+                actual_slot = timetable[batch_id][day].get(time_slot)
+                
+                if not actual_slot:
+                    violations += 1  # Slot is empty but should be fixed
+                else:
+                    if actual_slot['subject_id'] != required_subject_id:
+                        violations += 1
+                    if required_faculty_id and actual_slot['faculty_id'] != required_faculty_id:
+                        violations += 1
+                    if required_classroom_id and actual_slot['classroom_id'] != required_classroom_id:
+                        violations += 1
+        
+        return violations
+    
+    def check_faculty_availability(self, timetable):
+        """Check faculty availability considering leaves"""
+        violations = 0
+        faculty_workload = {f['id']: 0 for f in self.faculty}
+        
+        # Count faculty workload
+        for batch_id, schedule in timetable.items():
+            for day, time_slots in schedule.items():
+                for time_slot, slot_data in time_slots.items():
+                    if slot_data and slot_data['faculty_id']:
+                        faculty_id = slot_data['faculty_id']
+                        faculty_workload[faculty_id] += 1
+        
+        # Check against availability considering leaves
+        for faculty_id, workload in faculty_workload.items():
+            avg_leaves = self.faculty_leaves.get(faculty_id, 0)
+            available_days = len(self.days) * (20 - avg_leaves) / 30  # Approximate available days
+            
+            max_allowed_hours = self.faculty_map[faculty_id].get('max_hours_per_day', 8) * available_days
+            
+            if workload > max_allowed_hours:
+                violations += (workload - max_allowed_hours)
+        
+        return violations
+    
+    def initialize_population(self, size):
+        """Initialize population with fixed slots already assigned"""
+        population = []
+        
+        for _ in range(size):
+            timetable = {}
+            
+            # Initialize empty timetable structure
+            for batch in self.batches:
+                batch_id = batch['id']
+                timetable[batch_id] = {}
+                for day in self.days:
+                    timetable[batch_id][day] = {}
+                    for time_slot in self.time_slots:
+                        if time_slot == self.lunch_break:
+                            timetable[batch_id][day][time_slot] = None
+                        else:
+                            timetable[batch_id][day][time_slot] = None
+            
+            # Assign fixed slots first
+            for fixed_slot in self.fixed_slots:
+                batch_id = fixed_slot['batch_id']
+                day = fixed_slot['day']
+                time_slot = fixed_slot['time_slot']
+                
+                if (batch_id in timetable and day in timetable[batch_id] and 
+                    time_slot in timetable[batch_id][day]):
+                    
+                    timetable[batch_id][day][time_slot] = {
+                        'subject_id': fixed_slot['subject_id'],
+                        'faculty_id': fixed_slot.get('faculty_id'),
+                        'classroom_id': fixed_slot.get('classroom_id')
+                    }
+            
+            # Fill remaining slots
+            for batch in self.batches:
+                batch_id = batch['id']
+                
+                # Get subjects for this batch
+                batch_subjects = [s for s in self.subjects if s.get('department_id') == batch.get('department_id')]
+                
+                for day in self.days:
+                    for time_slot in self.time_slots:
+                        # Skip if already filled with fixed slot or lunch break
+                        if (timetable[batch_id][day][time_slot] is not None or 
+                            time_slot == self.lunch_break):
+                            continue
+                        
+                        # Try to assign a subject that hasn't reached its weekly limit
+                        available_subjects = []
+                        for subject in batch_subjects:
+                            # Count how many times this subject is already scheduled this week
+                            weekly_count = self.count_subject_weekly(timetable, batch_id, subject['id'])
+                            if weekly_count < subject.get('classes_per_week', 3):
+                                available_subjects.append(subject)
+                        
+                        if available_subjects:
+                            subject = random.choice(available_subjects)
+                            faculty_for_subject = self.get_faculty_for_subject(subject['id'])
+                            
+                            if faculty_for_subject:
+                                classroom = self.get_available_classroom(subject['subject_type'])
+                                timetable[batch_id][day][time_slot] = {
+                                    'subject_id': subject['id'],
+                                    'faculty_id': faculty_for_subject['id'],
+                                    'classroom_id': classroom['id'] if classroom else None
+                                }
+            
+            population.append(timetable)
+        
+        return population
+    
+    def count_subject_weekly(self, timetable, batch_id, subject_id):
+        """Count how many times a subject is scheduled in a week for a batch"""
+        count = 0
+        if batch_id in timetable:
+            for day in self.days:
+                for time_slot in self.time_slots:
+                    slot_data = timetable[batch_id][day].get(time_slot)
+                    if slot_data and slot_data['subject_id'] == subject_id:
+                        count += 1
+        return count
+    
+    def mutate(self, timetable):
+        """Enhanced mutation that respects constraints"""
+        mutated = deepcopy(timetable)
+        
+        # Don't mutate fixed slots
+        non_fixed_slots = []
+        for batch_id in mutated:
+            for day in self.days:
+                for time_slot in self.time_slots:
+                    if (time_slot != self.lunch_break and 
+                        not self.is_fixed_slot(batch_id, day, time_slot)):
+                        non_fixed_slots.append((batch_id, day, time_slot))
+        
+        if not non_fixed_slots:
+            return mutated
+        
+        # Select a random non-fixed slot to mutate
+        batch_id, day, time_slot = random.choice(non_fixed_slots)
+        
+        if random.random() < 0.7:  # 70% chance to change subject
+            # Get current subject and find alternatives
+            current_slot = mutated[batch_id][day][time_slot]
+            current_subject_id = current_slot['subject_id'] if current_slot else None
+            
+            # Find subjects that haven't reached their weekly limit
+            available_subjects = []
+            for subject in self.subjects:
+                if subject.get('department_id') == self.batch_map[batch_id].get('department_id'):
+                    weekly_count = self.count_subject_weekly(mutated, batch_id, subject['id'])
+                    if weekly_count < subject.get('classes_per_week', 3):
+                        available_subjects.append(subject)
+            
+            if available_subjects:
+                new_subject = random.choice(available_subjects)
+                faculty_for_subject = self.get_faculty_for_subject(new_subject['id'])
+                
+                if faculty_for_subject:
+                    classroom = self.get_available_classroom(new_subject['subject_type'])
+                    mutated[batch_id][day][time_slot] = {
+                        'subject_id': new_subject['id'],
+                        'faculty_id': faculty_for_subject['id'],
+                        'classroom_id': classroom['id'] if classroom else None
+                    }
+        else:  # 30% chance to clear the slot
+            mutated[batch_id][day][time_slot] = None
+            
+        return mutated
+    
+    def is_fixed_slot(self, batch_id, day, time_slot):
+        """Check if a slot is fixed"""
+        for fixed_slot in self.fixed_slots:
+            if (fixed_slot['batch_id'] == batch_id and 
+                fixed_slot['day'] == day and 
+                fixed_slot['time_slot'] == time_slot):
+                return True
+        return False
     
     def run(self):
-        result = super().run(self.population_size, self.generations, self.mutation_rate)
-        print(f"Genetic algorithm result type: {type(result)}")
-        if result and len(result) == 2:
-            best_timetable, fitness_score = result
-            print(f"Best timetable type: {type(best_timetable)}")
-            if best_timetable:
-                print(f"Best timetable keys (batch IDs): {list(best_timetable.keys())}")
-                for batch_id, schedule in list(best_timetable.items())[:2]:  # Print first 2 batches
-                    print(f"Batch {batch_id}: {len(schedule)} days")
-                    for day, time_slots in list(schedule.items())[:2]:  # Print first 2 days
-                        print(f"  Day {day}: {len(time_slots)} time slots")
-            return result
-        else:
-            print("Genetic algorithm returned invalid result")
-            # Return empty timetable with low fitness score
-            empty_timetable = {}
-            for batch in self.batches:
-                empty_timetable[batch['id']] = {}
-                for day in self.days:
-                    empty_timetable[batch['id']][day] = {}
-                    for time_slot in self.time_slots:
-                        empty_timetable[batch['id']][day][time_slot] = None
-            return empty_timetable, 100  # Low fitness score
+        """Run the enhanced genetic algorithm"""
+        population = self.initialize_population(self.population_size)
+        best_fitness = -1
+        best_timetable = None
+        
+        for generation in range(self.generations):
+            # Evaluate fitness
+            fitness_scores = [self.calculate_fitness(timetable) for timetable in population]
+            
+            # Find best timetable
+            max_fitness = max(fitness_scores)
+            if max_fitness > best_fitness:
+                best_fitness = max_fitness
+                best_timetable = population[fitness_scores.index(max_fitness)]
+                
+            # Elitism: keep best individuals
+            elite_size = int(self.population_size * self.elitism_rate)
+            elite_indices = np.argsort(fitness_scores)[-elite_size:]
+            new_population = [population[i] for i in elite_indices]
+            
+            # Create new generation
+            while len(new_population) < self.population_size:
+                # Tournament selection
+                parent1 = self.tournament_selection(population, fitness_scores)
+                parent2 = self.tournament_selection(population, fitness_scores)
+                
+                # Crossover
+                if random.random() < self.crossover_rate:
+                    child1, child2 = self.crossover(parent1, parent2)
+                else:
+                    child1, child2 = parent1, parent2
+                
+                # Mutation
+                if random.random() < self.mutation_rate:
+                    child1 = self.mutate(child1)
+                if random.random() < self.mutation_rate:
+                    child2 = self.mutate(child2)
+                
+                new_population.extend([child1, child2])
+            
+            population = new_population[:self.population_size]
+            
+            # Print progress
+            if generation % 50 == 0:
+                print(f"Generation {generation}: Best Fitness = {best_fitness}")
+                
+        return best_timetable, best_fitness
+    
+    def tournament_selection(self, population, fitness_scores, tournament_size=3):
+        """Tournament selection"""
+        tournament_indices = random.sample(range(len(population)), tournament_size)
+        tournament = [(population[i], fitness_scores[i]) for i in tournament_indices]
+        return max(tournament, key=lambda x: x[1])[0]

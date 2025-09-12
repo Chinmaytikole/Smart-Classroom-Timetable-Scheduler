@@ -24,55 +24,65 @@
     <div class="card-body">
         {% if faculty %}
         <div class="table-responsive">
-            <table class="table table-striped table-hover">
-                <thead>
-                    <tr>
-                        <th>Employee ID</th>
-                        <th>Name</th>
-                        <th>Department</th>
-                        <th>Max Hours/Day</th>
-                        <th>Preferred Times</th>
-                        {% if session.role == 'admin' %}
-                        <th>Actions</th>
-                        {% endif %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for fac in faculty %}
-                    <tr>
-                        <td class="fw-bold">{{ fac.employee_id }}</td>
-                        <td>{{ fac.name }}</td>
-                        <td>{{ fac.department_name or 'N/A' }}</td>
-                        <td>
-                            <span class="badge bg-secondary">{{ fac.max_hours_per_day }} hours</span>
-                        </td>
-                        <td>
-                            <span class="badge bg-info">{{ fac.preferred_times or 'Any' }}</span>
-                        </td>
-                        {% if session.role == 'admin' %}
-                        <td>
-                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" 
-                                    data-bs-target="#editFacultyModal" 
-                                    data-id="{{ fac.id }}"
-                                    data-name="{{ fac.name }}"
-                                    data-empid="{{ fac.employee_id }}"
-                                    data-dept="{{ fac.department_id }}"
-                                    data-hours="{{ fac.max_hours_per_day }}"
-                                    data-times="{{ fac.preferred_times }}">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" 
-                                    data-bs-target="#deleteFacultyModal" 
-                                    data-id="{{ fac.id }}"
-                                    data-name="{{ fac.name }}">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                        {% endif %}
-                    </tr>
+            <!-- In your faculty.html -->
+<table class="table table-striped table-hover">
+    <thead>
+        <tr>
+            <th>Employee ID</th>
+            <th>Name</th>
+            <th>Department</th>
+            <th>Subjects</th>
+            <th>Max Hours/Day</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for fac in faculty %}
+        <tr>
+            <td class="fw-bold">{{ fac.employee_id }}</td>
+            <td>{{ fac.name }}</td>
+            <td>{{ fac.department_name or 'N/A' }}</td>
+            <td>
+                {% set faculty_subjects = get_faculty_subjects(fac.id) %}
+                {% if faculty_subjects %}
+                    {% for subject in faculty_subjects[:3] %}
+                        <span class="badge bg-info mb-1">{{ subject.code }}</span>
                     {% endfor %}
-                </tbody>
-            </table>
+                    {% if faculty_subjects|length > 3 %}
+                        <span class="badge bg-secondary">+{{ faculty_subjects|length - 3 }} more</span>
+                    {% endif %}
+                {% else %}
+                    <span class="text-muted">No subjects</span>
+                {% endif %}
+            </td>
+            <td>
+                <span class="badge bg-secondary">{{ fac.max_hours_per_day }} hours</span>
+            </td>
+            <td>
+                <a href="{{ url_for('faculty_subjects', faculty_id=fac.id) }}" class="btn btn-sm btn-outline-info">
+                    <i class="fas fa-book"></i> Subjects
+                </a>
+                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" 
+                        data-bs-target="#editFacultyModal" 
+                        data-id="{{ fac.id }}"
+                        data-name="{{ fac.name }}"
+                        data-empid="{{ fac.employee_id }}"
+                        data-dept="{{ fac.department_id }}"
+                        data-hours="{{ fac.max_hours_per_day }}"
+                        data-times="{{ fac.preferred_times }}">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" 
+                        data-bs-target="#deleteFacultyModal" 
+                        data-id="{{ fac.id }}"
+                        data-name="{{ fac.name }}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
         </div>
         {% else %}
         <div class="alert alert-info">

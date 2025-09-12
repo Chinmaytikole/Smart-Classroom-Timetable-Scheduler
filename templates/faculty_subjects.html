@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Faculty Subjects - {{ faculty.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1><i class="fas fa-user-tie"></i> Subjects Taught by {{ faculty.name }}</h1>
+        <p class="text-muted">Employee ID: {{ faculty.employee_id }}</p>
+    </div>
+    <div>
+        <a href="{{ url_for('faculty') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Faculty
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-book"></i> Current Subjects</h5>
+            </div>
+            <div class="card-body">
+                {% if faculty_subjects %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Subject Code</th>
+                                <th>Subject Name</th>
+                                <th>Type</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for subject in faculty_subjects %}
+                            <tr>
+                                <td class="fw-bold">{{ subject.code }}</td>
+                                <td>{{ subject.name }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'info' if subject.subject_type == 'THEORY' else 'warning' }}">
+                                        {{ subject.subject_type }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('remove_faculty_subject', faculty_id=faculty.id, subject_id=subject.id) }}" 
+                                       class="btn btn-sm btn-outline-danger"
+                                       onclick="return confirm('Are you sure you want to remove this subject from {{ faculty.name }}?')">
+                                        <i class="fas fa-times"></i> Remove
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> This faculty member doesn't teach any subjects yet.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-plus-circle"></i> Add New Subject</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_faculty_subject') }}">
+                    <input type="hidden" name="faculty_id" value="{{ faculty.id }}">
+                    <div class="mb-3">
+                        <label class="form-label">Select Subject</label>
+                        <select class="form-select" name="subject_id" required>
+                            <option value="">Choose a subject...</option>
+                            {% for subject in all_subjects %}
+                            <option value="{{ subject.id }}">{{ subject.code }} - {{ subject.name }} ({{ subject.subject_type }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Add Subject
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
