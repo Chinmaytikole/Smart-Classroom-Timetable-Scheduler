@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}{{ timetable_info.name }} - Timetable View{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1><i class="fas fa-table"></i> {{ timetable_info.name }}</h1>
+        <p class="text-muted mb-0">
+            {{ timetable_info.department_name }} - Semester {{ timetable_info.semester }}
+            {% if timetable_info.fitness_score %}
+                <span class="badge bg-{{ 'success' if timetable_info.fitness_score > 800 else 'warning' if timetable_info.fitness_score > 600 else 'danger' }} ms-2">
+                    Fitness: {{ "%.1f"|format(timetable_info.fitness_score) }}
+                </span>
+            {% endif %}
+        </p>
+    </div>
+    <div>
+        <button class="btn btn-primary" onclick="window.print()">
+            <i class="fas fa-print"></i> Print
+        </button>
+    </div>
+</div>
+
+{% for batch_id, batch_data in organized_slots.items() %}
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-users"></i> {{ batch_data.batch_name }}</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover mb-0 timetable-table">
+                <thead class="table-dark">
+                    <tr>
+                        <th style="width: 120px;">Time</th>
+                        {% for day in days %}
+                        <th class="text-center">{{ day }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for time_slot in time_slots %}
+                    <tr>
+                        <td class="fw-bold bg-light">{{ time_slot }}</td>
+                        {% for day in days %}
+                        <td class="text-center">
+                            {% if batch_data.schedule.get(day, {}).get(time_slot) %}
+                                {% set slot = batch_data.schedule[day][time_slot] %}
+                                <div class="timetable-slot">
+                                    <div class="subject-name fw-bold">{{ slot.subject_name }}</div>
+                                    <div class="subject-code text-muted small">{{ slot.subject_code }}</div>
+                                    <div class="faculty-name text-primary small">{{ slot.faculty_name }}</div>
+                                    <div class="classroom-name text-success small">{{ slot.classroom_name }}</div>
+                                </div>
+                            {% else %}
+                                <div class="text-muted">-</div>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% if not organized_slots %}
+<div class="alert alert-warning">
+    <i class="fas fa-exclamation-triangle"></i>
+    No timetable slots found for this timetable.
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<style>
+.timetable-slot {
+    padding: 5px;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+}
+
+.timetable-table td {
+    vertical-align: middle;
+    min-height: 80px;
+}
+
+@media print {
+    .btn, .navbar, .card-header { display: none !important; }
+    .card { border: none !important; }
+}
+</style>
+{% endblock %}
