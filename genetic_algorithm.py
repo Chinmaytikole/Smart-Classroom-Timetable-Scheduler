@@ -330,4 +330,26 @@ class EnhancedGeneticTimetable(GeneticTimetable):
         return score
     
     def run(self):
-        return super().run(self.population_size, self.generations, self.mutation_rate)
+        result = super().run(self.population_size, self.generations, self.mutation_rate)
+        print(f"Genetic algorithm result type: {type(result)}")
+        if result and len(result) == 2:
+            best_timetable, fitness_score = result
+            print(f"Best timetable type: {type(best_timetable)}")
+            if best_timetable:
+                print(f"Best timetable keys (batch IDs): {list(best_timetable.keys())}")
+                for batch_id, schedule in list(best_timetable.items())[:2]:  # Print first 2 batches
+                    print(f"Batch {batch_id}: {len(schedule)} days")
+                    for day, time_slots in list(schedule.items())[:2]:  # Print first 2 days
+                        print(f"  Day {day}: {len(time_slots)} time slots")
+            return result
+        else:
+            print("Genetic algorithm returned invalid result")
+            # Return empty timetable with low fitness score
+            empty_timetable = {}
+            for batch in self.batches:
+                empty_timetable[batch['id']] = {}
+                for day in self.days:
+                    empty_timetable[batch['id']][day] = {}
+                    for time_slot in self.time_slots:
+                        empty_timetable[batch['id']][day][time_slot] = None
+            return empty_timetable, 100  # Low fitness score
