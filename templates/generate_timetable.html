@@ -47,6 +47,75 @@
                                 </select>
                             </div>
                         </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="max_classes_per_day" class="form-label">Max Classes Per Day</label>
+                                <input type="number" class="form-control" id="max_classes_per_day" name="max_classes_per_day" value="6" min="1" max="10">
+                                <div class="form-text">Maximum classes per day for each batch</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fixed Slots Section -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0"><i class="fas fa-lock"></i> Fixed Time Slots</h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="fixedSlotsContainer">
+                                <div class="fixed-slot-entry mb-2 p-2 border rounded">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <select class="form-select form-select-sm" name="fixed_batch[]">
+                                                <option value="">Select Batch</option>
+                                                {% for batch in batches %}
+                                                <option value="{{ batch.id }}">{{ batch.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <select class="form-select form-select-sm" name="fixed_day[]">
+                                                <option value="">Day</option>
+                                                <option value="Monday">Monday</option>
+                                                <option value="Tuesday">Tuesday</option>
+                                                <option value="Wednesday">Wednesday</option>
+                                                <option value="Thursday">Thursday</option>
+                                                <option value="Friday">Friday</option>
+                                                <option value="Saturday">Saturday</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <select class="form-select form-select-sm" name="fixed_time[]">
+                                                <option value="">Time</option>
+                                                <option value="9:00-10:00">9:00-10:00</option>
+                                                <option value="10:00-11:00">10:00-11:00</option>
+                                                <option value="11:00-12:00">11:00-12:00</option>
+                                                <option value="1:00-2:00">1:00-2:00</option>
+                                                <option value="2:00-3:00">2:00-3:00</option>
+                                                <option value="3:00-4:00">3:00-4:00</option>
+                                                <option value="4:00-5:00">4:00-5:00</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <select class="form-select form-select-sm" name="fixed_subject[]">
+                                                <option value="">Select Subject</option>
+                                                {% for subject in subjects %}
+                                                <option value="{{ subject.id }}">{{ subject.code }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <button type="button" class="btn btn-sm btn-danger remove-fixed-slot">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="addFixedSlot">
+                                <i class="fas fa-plus"></i> Add Fixed Slot
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="d-grid">
@@ -67,19 +136,60 @@
             <div class="card-body">
                 <p><strong>Our AI system considers:</strong></p>
                 <ul class="list-unstyled">
-                    <li><i class="fas fa-check text-success"></i> Faculty availability</li>
+                    <li><i class="fas fa-check text-success"></i> Faculty availability & leaves</li>
                     <li><i class="fas fa-check text-success"></i> Classroom capacity</li>
                     <li><i class="fas fa-check text-success"></i> Subject requirements</li>
                     <li><i class="fas fa-check text-success"></i> Workload distribution</li>
-                    <li><i class="fas fa-check text-success"></i> Conflict resolution</li>
+                    <li><i class="fas fa-check text-success"></i> Fixed time slots</li>
+                    <li><i class="fas fa-check text-success"></i> Max classes per day limits</li>
+                    <li><i class="fas fa-check text-success"></i> Faculty leave considerations</li>
                 </ul>
                 
                 <div class="alert alert-info">
                     <i class="fas fa-lightbulb"></i>
-                    <small>The genetic algorithm will generate multiple optimized solutions and select the best one.</small>
+                    <small>The enhanced genetic algorithm ensures optimal scheduling while respecting all constraints including fixed slots and faculty availability.</small>
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add fixed slot functionality
+    document.getElementById('addFixedSlot').addEventListener('click', function() {
+        const container = document.getElementById('fixedSlotsContainer');
+        const newEntry = container.firstElementChild.cloneNode(true);
+        
+        // Clear selected values
+        newEntry.querySelectorAll('select').forEach(select => {
+            select.value = '';
+        });
+        
+        container.appendChild(newEntry);
+    });
+
+    // Remove fixed slot functionality
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-fixed-slot')) {
+            const entry = e.target.closest('.fixed-slot-entry');
+            if (document.querySelectorAll('.fixed-slot-entry').length > 1) {
+                entry.remove();
+            }
+        }
+    });
+
+    // Load batches and subjects when department changes
+    document.getElementById('department_id').addEventListener('change', function() {
+        const departmentId = this.value;
+        if (departmentId) {
+            // This would typically make an AJAX call to get batches and subjects
+            console.log('Department changed to:', departmentId);
+            // You would implement AJAX calls here to populate batches and subjects
+        }
+    });
+});
+</script>
 {% endblock %}

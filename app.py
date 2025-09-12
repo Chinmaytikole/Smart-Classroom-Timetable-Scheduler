@@ -135,14 +135,36 @@ def init_db():
         UNIQUE(faculty_id, subject_id)
     )
     ''')
-    # Add faculty_leaves table
+
+        # Add faculty_leaves table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS faculty_leaves (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             faculty_id INTEGER NOT NULL,
             avg_leaves_per_month REAL DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (faculty_id) REFERENCES faculty (id)
+            FOREIGN KEY (faculty_id) REFERENCES faculty (id),
+            UNIQUE(faculty_id)
+        )
+    ''')
+
+    # Add fixed_slots table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS fixed_slots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timetable_id INTEGER,
+            batch_id INTEGER NOT NULL,
+            day TEXT NOT NULL,
+            time_slot TEXT NOT NULL,
+            subject_id INTEGER NOT NULL,
+            faculty_id INTEGER,
+            classroom_id INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (timetable_id) REFERENCES timetables (id),
+            FOREIGN KEY (batch_id) REFERENCES batches (id),
+            FOREIGN KEY (subject_id) REFERENCES subjects (id),
+            FOREIGN KEY (faculty_id) REFERENCES faculty (id),
+            FOREIGN KEY (classroom_id) REFERENCES classrooms (id)
         )
     ''')
 
@@ -312,6 +334,7 @@ def generate_timetable_process():
     name = request.form['name']
     department_id = request.form['department_id']
     semester = request.form['semester']
+    max_classes_per_day = request.form.get('max_classes_per_day', 6, type=int)
     
     print(f"Generating timetable: {name}, Dept: {department_id}, Semester: {semester}")
     
@@ -345,45 +368,43 @@ def generate_timetable_process():
         conn.close()
         return redirect(url_for('generate_timetable'))
     
+    # Process fixed slots from form
+    fixed_slots = []
+    fixed_batches = request.form.getlist('fixed_batch[]')
+    fixed_days = request.form.getlist('fixed_day[]')
+    fixed_times = request.form.getlist('fixed_time[]')
+    fixed_subjects = request.form.getlist('fixed_subject[]')
+    
+    for i in range(len(fixed_batches)):
+        if (fixed_batches[i] and fixed_days[i] and fixed_times[i] and fixed_subjects[i]):
+            fixed_slots.append({
+                'batch_id': int(fixed_batches[i]),
+                'day': fixed_days[i],
+                'time_slot': fixed_times[i],
+                'subject_id': int(fixed_subjects[i]),
+                'faculty_id': None,  # Will be assigned by genetic algorithm
+                'classroom_id': None  # Will be assigned by genetic algorithm
+            })
+    
     # Define constraints
     constraints = {
-    'days': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-    'time_slots': ['9:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-1:00', '1:00-2:00', '2:00-3:00', '3:00-4:00', '4:00-5:00'],
-    'lunch_break': '12:00-1:00',
-    'max_classes_per_day_per_batch': 6,  # Maximum classes per day per batch
-    'max_hours_per_faculty': 8,
-    'fixed_slots': get_fixed_slots()  # You'll need to implement this
-}
-    def get_fixed_slots(self):
-        """Get fixed slots from database"""
-        conn = sqlite3.connect('timetable.db')
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT batch_id, day, time_slot, subject_id, faculty_id, classroom_id
-            FROM fixed_slots
-        ''')
-        
-        fixed_slots = []
-        for row in cursor.fetchall():
-            fixed_slots.append({
-                'batch_id': row[0],
-                'day': row[1],
-                'time_slot': row[2],
-                'subject_id': row[3],
-                'faculty_id': row[4],
-                'classroom_id': row[5]
-            })
-        
-        conn.close()
-        return fixed_slots
+        'days': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+        'time_slots': ['9:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-1:00', '1:00-2:00', '2:00-3:00', '3:00-4:00', '4:00-5:00'],
+        'lunch_break': '12:00-1:00',
+        'max_classes_per_day_per_batch': max_classes_per_day,
+        'max_hours_per_faculty': 8,
+        'fixed_slots': fixed_slots
+    }
+    
+    print(f"Constraints: {constraints}")
+    print(f"Fixed slots: {len(fixed_slots)}")
+    
     try:
         # Initialize and run genetic algorithm
         genetic_timetable = EnhancedGeneticTimetable(subjects, faculty, classrooms, batches, constraints)
         best_timetable, fitness_score = genetic_timetable.run()
         
         print(f"Genetic algorithm completed. Fitness score: {fitness_score}")
-        print(f"Best timetable structure: {list(best_timetable.keys()) if best_timetable else 'Empty'}")
         
         # Save the timetable to database
         cursor.execute(
@@ -392,6 +413,16 @@ def generate_timetable_process():
         )
         timetable_id = cursor.lastrowid
         print(f"Created timetable record with ID: {timetable_id}")
+        
+        # Save fixed slots to database
+        for fixed_slot in fixed_slots:
+            cursor.execute(
+                '''INSERT INTO fixed_slots 
+                (timetable_id, batch_id, day, time_slot, subject_id, faculty_id, classroom_id) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                (timetable_id, fixed_slot['batch_id'], fixed_slot['day'], fixed_slot['time_slot'],
+                 fixed_slot['subject_id'], fixed_slot['faculty_id'], fixed_slot['classroom_id'])
+            )
         
         # Save timetable slots
         slot_count = 0
@@ -409,7 +440,7 @@ def generate_timetable_process():
                         slot_count += 1
         
         conn.commit()
-        print(f"Saved {slot_count} timetable slots")
+        print(f"Saved {slot_count} timetable slots and {len(fixed_slots)} fixed slots")
         
         flash(f'Timetable generated successfully with fitness score: {fitness_score:.2f}', 'success')
         return redirect(url_for('view_timetable', timetable_id=timetable_id))
@@ -424,10 +455,33 @@ def generate_timetable_process():
     finally:
         conn.close()
 
+def get_fixed_slots():
+    """Get fixed slots from database"""
+    conn = sqlite3.connect('timetable.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT batch_id, day, time_slot, subject_id, faculty_id, classroom_id
+        FROM fixed_slots
+    ''')
+    
+    fixed_slots = []
+    for row in cursor.fetchall():
+        fixed_slots.append({
+            'batch_id': row[0],
+            'day': row[1],
+            'time_slot': row[2],
+            'subject_id': row[3],
+            'faculty_id': row[4],
+            'classroom_id': row[5]
+        })
+    
+    conn.close()
+    return fixed_slots
+
 @app.route('/timetable/<int:timetable_id>')
 @login_required
 def view_timetable(timetable_id):
-    print(f"Viewing timetable ID: {timetable_id}")
     try:
         conn = sqlite3.connect('timetable.db')
         conn.row_factory = sqlite3.Row
@@ -447,8 +501,21 @@ def view_timetable(timetable_id):
             return redirect(url_for('timetables'))
         
         timetable_info = dict(timetable_row)
-        print(f"Timetable info: {timetable_info}")
-
+        
+        # Get fixed slots for this timetable
+        cursor.execute('''
+            SELECT fs.*, b.name as batch_name, s.code as subject_code, 
+                   f.name as faculty_name, c.name as classroom_name
+            FROM fixed_slots fs
+            LEFT JOIN batches b ON fs.batch_id = b.id
+            LEFT JOIN subjects s ON fs.subject_id = s.id
+            LEFT JOIN faculty f ON fs.faculty_id = f.id
+            LEFT JOIN classrooms c ON fs.classroom_id = c.id
+            WHERE fs.timetable_id = ?
+        ''', (timetable_id,))
+        
+        fixed_slots = [dict(row) for row in cursor.fetchall()]
+        
         # Get timetable slots
         cursor.execute('''
             SELECT ts.*, s.name as subject_name, s.code as subject_code, 
@@ -464,21 +531,25 @@ def view_timetable(timetable_id):
         ''', (timetable_id,))
         
         slots = cursor.fetchall()
-        print(f"Fetched {len(slots)} timetable slots")
-
+        
         # Organize slots by batch and day/time
         organized_slots = {}
         days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
         time_slots = ['9:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-1:00', '1:00-2:00', '2:00-3:00', '3:00-4:00', '4:00-5:00']
         
-        # Initialize structure for all batches in this timetable
-        for slot in slots:
-            batch_id = slot['batch_id']
-            if batch_id not in organized_slots:
-                organized_slots[batch_id] = {
-                    'batch_name': slot['batch_name'],
-                    'schedule': {day: {time: None for time in time_slots} for day in days}
-                }
+        # Initialize structure for all batches
+        cursor.execute('''
+            SELECT b.id, b.name 
+            FROM batches b
+            WHERE b.department_id = ? AND b.semester = ?
+        ''', (timetable_info['department_id'], timetable_info['semester']))
+        
+        batches = cursor.fetchall()
+        for batch in batches:
+            organized_slots[batch['id']] = {
+                'batch_name': batch['name'],
+                'schedule': {day: {time: None for time in time_slots} for day in days}
+            }
         
         # Fill in the slot data
         for slot in slots:
@@ -486,22 +557,21 @@ def view_timetable(timetable_id):
             day = slot['day']
             time_slot = slot['time_slot']
             
-            if (batch_id in organized_slots and 
-                day in organized_slots[batch_id]['schedule'] and 
-                time_slot in organized_slots[batch_id]['schedule'][day]):
-                organized_slots[batch_id]['schedule'][day][time_slot] = slot
-
+            organized_slots[batch_id]['schedule'][day][time_slot] = slot
+        
         conn.close()
-        print(f"Organized slots for {organized_slots} batches")
+        
         return render_template('view_timetable.html', 
                              timetable_info=timetable_info,
                              organized_slots=organized_slots,
                              days=days,
-                             time_slots=time_slots)
-                             
+                             time_slots=time_slots,
+                             fixed_slots=fixed_slots,
+                             fixed_slots_count=len(fixed_slots),
+                             max_classes_per_day=6)  # You can make this dynamic
+        
     except Exception as e:
         print(f"Error viewing timetable: {str(e)}")
-
         flash(f'Error loading timetable: {str(e)}', 'error')
         return redirect(url_for('timetables'))
     
@@ -1242,6 +1312,63 @@ def get_faculty_subjects(faculty_id):
 @app.context_processor
 def utility_processor():
     return dict(get_faculty_subjects=get_faculty_subjects)
+
+# Add these routes to your app.py
+
+@app.route('/update_faculty_leaves', methods=['POST'])
+@admin_required
+def update_faculty_leaves():
+    faculty_id = request.form['faculty_id']
+    avg_leaves = request.form['avg_leaves_per_month']
+    
+    conn = sqlite3.connect('timetable.db')
+    cursor = conn.cursor()
+    
+    try:
+        # Check if record exists
+        cursor.execute('SELECT * FROM faculty_leaves WHERE faculty_id = ?', (faculty_id,))
+        if cursor.fetchone():
+            cursor.execute(
+                'UPDATE faculty_leaves SET avg_leaves_per_month = ? WHERE faculty_id = ?',
+                (avg_leaves, faculty_id)
+            )
+        else:
+            cursor.execute(
+                'INSERT INTO faculty_leaves (faculty_id, avg_leaves_per_month) VALUES (?, ?)',
+                (faculty_id, avg_leaves)
+            )
+        
+        conn.commit()
+        flash('Faculty leaves updated successfully!', 'success')
+    except Exception as e:
+        flash(f'Error updating leaves: {str(e)}', 'error')
+    finally:
+        conn.close()
+    
+    return redirect(url_for('faculty'))
+
+@app.route('/get_batches_subjects/<int:department_id>')
+@login_required
+def get_batches_subjects(department_id):
+    """Get batches and subjects for a department (AJAX)"""
+    conn = sqlite3.connect('timetable.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Get batches
+    cursor.execute('SELECT * FROM batches WHERE department_id = ?', (department_id,))
+    batches = [dict(row) for row in cursor.fetchall()]
+    
+    # Get subjects
+    cursor.execute('SELECT * FROM subjects WHERE department_id = ?', (department_id,))
+    subjects = [dict(row) for row in cursor.fetchall()]
+    
+    conn.close()
+    
+    return jsonify({
+        'batches': batches,
+        'subjects': subjects
+    })
 
 if __name__ == '__main__':
     # Create upload directory if it doesn't exist

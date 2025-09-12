@@ -193,20 +193,32 @@ class GeneticTimetable:
         return violations
     
     def crossover(self, parent1, parent2):
-        # Single-point crossover
-        child = deepcopy(parent1)
+        """Enhanced crossover that creates two children"""
+        # Create two children
+        child1 = deepcopy(parent1)
+        child2 = deepcopy(parent2)
+
+        # Single-point crossover for both children
         crossover_point = random.randint(1, len(self.days) - 1)
         crossover_days = self.days[crossover_point:]
-        
+
+        # First child: parent1 with some days from parent2
         for batch_id in parent2:
-            if batch_id not in child:
-                child[batch_id] = {}
-                
+            if batch_id not in child1:
+                child1[batch_id] = {}
             for day in crossover_days:
                 if day in parent2[batch_id]:
-                    child[batch_id][day] = deepcopy(parent2[batch_id][day])
+                    child1[batch_id][day] = deepcopy(parent2[batch_id][day])
+
+        # Second child: parent2 with some days from parent1
+        for batch_id in parent1:
+            if batch_id not in child2:
+                child2[batch_id] = {}
+            for day in crossover_days:
+                if day in parent1[batch_id]:
+                    child2[batch_id][day] = deepcopy(parent1[batch_id][day])
                     
-        return child
+        return child1, child2
     
     def mutate(self, timetable):
         mutated = deepcopy(timetable)
@@ -572,6 +584,35 @@ class EnhancedGeneticTimetable(GeneticTimetable):
                 return True
         return False
     
+    # ... (keep all existing code until the run method)
+    def crossover(self, parent1, parent2):
+        """Enhanced crossover that creates two children"""
+        # Create two children
+        child1 = deepcopy(parent1)
+        child2 = deepcopy(parent2)
+        
+        # Single-point crossover for both children
+        crossover_point = random.randint(1, len(self.days) - 1)
+        crossover_days = self.days[crossover_point:]
+        
+        # First child: parent1 with some days from parent2
+        for batch_id in parent2:
+            if batch_id not in child1:
+                child1[batch_id] = {}
+            for day in crossover_days:
+                if day in parent2[batch_id]:
+                    child1[batch_id][day] = deepcopy(parent2[batch_id][day])
+        
+        # Second child: parent2 with some days from parent1
+        for batch_id in parent1:
+            if batch_id not in child2:
+                child2[batch_id] = {}
+            for day in crossover_days:
+                if day in parent1[batch_id]:
+                    child2[batch_id][day] = deepcopy(parent1[batch_id][day])
+                    
+        return child1, child2
+
     def run(self):
         """Run the enhanced genetic algorithm"""
         population = self.initialize_population(self.population_size)
@@ -599,7 +640,7 @@ class EnhancedGeneticTimetable(GeneticTimetable):
                 parent1 = self.tournament_selection(population, fitness_scores)
                 parent2 = self.tournament_selection(population, fitness_scores)
                 
-                # Crossover
+                # Crossover - this now returns two children
                 if random.random() < self.crossover_rate:
                     child1, child2 = self.crossover(parent1, parent2)
                 else:
@@ -620,7 +661,7 @@ class EnhancedGeneticTimetable(GeneticTimetable):
                 print(f"Generation {generation}: Best Fitness = {best_fitness}")
                 
         return best_timetable, best_fitness
-    
+
     def tournament_selection(self, population, fitness_scores, tournament_size=3):
         """Tournament selection"""
         tournament_indices = random.sample(range(len(population)), tournament_size)
