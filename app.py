@@ -267,7 +267,7 @@ def timetables():
     timetables = cursor.fetchall()
     
     conn.close()
-    return render_template('view_timetable.html', timetables=timetables)
+    return render_template('timetables.html', timetables=timetables)
 
 @app.route('/generate_timetable')
 @login_required
@@ -401,12 +401,19 @@ def view_timetable(timetable_id):
     
     conn.close()
     
-    return render_template('view_timetable.html', 
+    return render_template('timetables.html', 
                          timetable_info=timetable_info,
                          organized_slots=organized_slots,
                          days=days,
                          time_slots=time_slots)
 
+# Add this function to create a custom filter for average calculation
+@app.template_filter('average')
+def average_filter(sequence):
+    try:
+        return sum(sequence) / len(sequence)
+    except (TypeError, ZeroDivisionError):
+        return 0
 # Update these routes in app.py to include departments data
 
 @app.route('/subjects')
