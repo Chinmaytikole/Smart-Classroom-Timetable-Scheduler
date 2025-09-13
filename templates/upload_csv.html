@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Upload CSV - Intelligent Timetable System{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-file-import"></i> CSV Data Import</h1>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Back to Dashboard
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-upload"></i> Upload CSV File</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('upload_csv') }}" enctype="multipart/form-data">
+                    <div class="mb-4">
+                        <label for="data_type" class="form-label">Select Data Type</label>
+                        <select class="form-select" id="data_type" name="data_type" required>
+                            <option value="">Choose data type to import...</option>
+                            <option value="departments">Departments</option>
+                            <option value="subjects">Subjects</option>
+                            <option value="faculty">Faculty</option>
+                            <option value="classrooms">Classrooms</option>
+                            <option value="batches">Batches</option>
+                            <option value="faculty_subjects">Faculty Subjects Mapping</option>
+                            <option value="faculty_leaves">Faculty Leave Information</option>
+                            <option value="fixed_slots">Fixed Time Slots</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="csv_file" class="form-label">CSV File</label>
+                        <input type="file" class="form-control" id="csv_file" name="csv_file" accept=".csv" required>
+                        <div class="form-text">Select a CSV file to upload. Maximum file size: 16MB</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">CSV Format Guidelines</label>
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle"></i> Required CSV Formats:</h6>
+                            <ul class="mb-0">
+                                <li><strong>Departments</strong>: code, name</li>
+                                <li><strong>Subjects</strong>: code, name, department_id, subject_type, classes_per_week</li>
+                                <li><strong>Faculty</strong>: employee_id, name, department_id, max_hours_per_day, preferred_times</li>
+                                <li><strong>Classrooms</strong>: name, capacity, type, department_id</li>
+                                <li><strong>Batches</strong>: name, department_id, semester, strength</li>
+                                <li><strong>Faculty Subjects</strong>: faculty_id, subject_id</li>
+                                <li><strong>Faculty Leaves</strong>: faculty_id, avg_leaves_per_month</li>
+                                <li><strong>Fixed Slots</strong>: batch_id, day, time_slot, subject_id, faculty_id, classroom_id</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-upload"></i> Upload and Process CSV
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-download"></i> Download Templates</h5>
+            </div>
+            <div class="card-body">
+                <p>Download CSV templates for each data type:</p>
+                
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('download_template', template_type='departments') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-download"></i> Departments Template
+                    </a>
+                    <a href="{{ url_for('download_template', template_type='subjects') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-download"></i> Subjects Template
+                    </a>
+                    <a href="{{ url_for('download_template', template_type='faculty') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-download"></i> Faculty Template
+                    </a>
+                    <a href="{{ url_for('download_template', template_type='classrooms') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-download"></i> Classrooms Template
+                    </a>
+                    <a href="{{ url_for('download_template', template_type='batches') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-download"></i> Batches Template
+                    </a>
+                    <a href="{{ url_for('download_template', template_type='faculty_subjects') }}" class="btn btn-outline-info">
+                        <i class="fas fa-download"></i> Faculty Subjects Template
+                    </a>
+                    <a href="{{ url_for('download_template', template_type='faculty_leaves') }}" class="btn btn-outline-info">
+                        <i class="fas fa-download"></i> Faculty Leaves Template
+                    </a>
+                    <a href="{{ url_for('download_template', template_type='fixed_slots') }}" class="btn btn-outline-info">
+                        <i class="fas fa-download"></i> Fixed Slots Template
+                    </a>
+                </div>
+
+                <div class="alert alert-warning mt-3">
+                    <h6><i class="fas fa-exclamation-triangle"></i> Important Notes:</h6>
+                    <ul class="mb-0">
+                        <li>CSV files must have headers matching the templates</li>
+                        <li>Use IDs for relationships (department_id, faculty_id, etc.)</li>
+                        <li>File encoding should be UTF-8</li>
+                        <li>Backup your data before bulk imports</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload History -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-history"></i> Recent Uploads</h5>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> Upload history feature coming soon.
+        </div>
+    </div>
+</div>
+{% endblock %}

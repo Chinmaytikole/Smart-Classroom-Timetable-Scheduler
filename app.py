@@ -1,5 +1,5 @@
 # app.py
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, make_response
 from functools import wraps
 import sqlite3
 import os
@@ -333,8 +333,20 @@ def generate_timetable():
     cursor.execute('SELECT * FROM departments ORDER BY name')
     departments = cursor.fetchall()
     
+    # Get batches for the selected department (or all batches)
+    cursor.execute('SELECT * FROM batches ORDER BY name')
+    batches = cursor.fetchall()
+    
+    # Get subjects for the selected department (or all subjects)
+    cursor.execute('SELECT * FROM subjects ORDER BY name')
+    subjects = cursor.fetchall()
+    
     conn.close()
-    return render_template('generate_timetable.html', departments=departments)
+    
+    return render_template('generate_timetable.html', 
+                         departments=departments,
+                         batches=batches,
+                         subjects=subjects)
 
 
 @app.route('/generate_timetable_process', methods=['POST'])
@@ -491,6 +503,7 @@ def get_fixed_slots():
     conn.close()
     return fixed_slots
 
+
 @app.route('/timetable/<int:timetable_id>')
 @login_required
 def view_timetable(timetable_id):
@@ -514,23 +527,9 @@ def view_timetable(timetable_id):
         
         timetable_info = dict(timetable_row)
         
-        # Get fixed slots for this timetable
+        # Get timetable slots with subject type
         cursor.execute('''
-            SELECT fs.*, b.name as batch_name, s.code as subject_code, 
-                   f.name as faculty_name, c.name as classroom_name
-            FROM fixed_slots fs
-            LEFT JOIN batches b ON fs.batch_id = b.id
-            LEFT JOIN subjects s ON fs.subject_id = s.id
-            LEFT JOIN faculty f ON fs.faculty_id = f.id
-            LEFT JOIN classrooms c ON fs.classroom_id = c.id
-            WHERE fs.timetable_id = ?
-        ''', (timetable_id,))
-        
-        fixed_slots = [dict(row) for row in cursor.fetchall()]
-        
-        # Get timetable slots
-        cursor.execute('''
-            SELECT ts.*, s.name as subject_name, s.code as subject_code, 
+            SELECT ts.*, s.name as subject_name, s.code as subject_code, s.subject_type,
                    f.name as faculty_name, c.name as classroom_name,
                    b.name as batch_name, b.id as batch_id
             FROM timetable_slots ts
@@ -577,11 +576,8 @@ def view_timetable(timetable_id):
                              timetable_info=timetable_info,
                              organized_slots=organized_slots,
                              days=days,
-                             time_slots=time_slots,
-                             fixed_slots=fixed_slots,
-                             fixed_slots_count=len(fixed_slots),
-                             max_classes_per_day=6)  # You can make this dynamic
-        
+                             time_slots=time_slots)
+                             
     except Exception as e:
         print(f"Error viewing timetable: {str(e)}")
         flash(f'Error loading timetable: {str(e)}', 'error')
@@ -1374,6 +1370,98 @@ def get_batches_subjects(department_id):
     
     # Get subjects
     cursor.execute('SELECT * FROM subjects WHERE department_id = ?', (department_id,))
+    subjects = [dict(row) for row in cursor.fetchall()]
+    
+    conn.close()
+    
+    return jsonify({
+        'batches': batches,
+        'subjects': subjects
+    })
+
+
+    
+@app.route('/download_template/<template_type>')
+@admin_required
+def download_template(template_type):
+    """Download CSV templates for different data types"""
+    templates = {
+        'departments': 'code,name\nCSE,Computer Science Engineering\nECE,Electronics and Communication Engineering\n',
+        'subjects': 'code,name,department_id,subject_type,classes_per_week\nMATH101,Mathematics 1,1,THEORY,4\nPHYS101,Physics 1,1,LAB,3\n',
+        'faculty': 'employee_id,name,department_id,max_hours_per_day,preferred_times\nF001,John Smith,1,8,9:00-11:00;2:00-4:00\nF002,Jane Doe,1,6,10:00-12:00\n',
+        'classrooms': 'name,capacity,type,department_id\nA-101,60,CLASSROOM,1\nL-201,30,LAB,1\n',
+        'batches': 'name,department_id,semester,strength\nCSE-A,1,1,60\nCSE-B,1,1,55\n',
+        'faculty_subjects': 'faculty_id,subject_id\n1,1\n1,2\n2,3\n',
+        'faculty_leaves': 'faculty_id,avg_leaves_per_month\n1,2.5\n2,1.0\n',
+        'fixed_slots': 'batch_id,day,time_slot,subject_id,faculty_id,classroom_id\n1,Monday,9:00-10:00,1,1,1\n1,Wednesday,10:00-11:00,2,2,2\n'
+    }
+    
+    if template_type in templates:
+        response = make_response(templates[template_type])
+        response.headers["Content-Disposition"] = f"attachment; filename={template_type}_template.csv"
+        response.headers["Content-type"] = "text/csv"
+        return response
+    else:
+        flash('Template not found!', 'error')
+        return redirect(url_for('upload_csv'))
+
+# Add this helper function to validate CSV files
+def validate_csv_columns(df, required_columns):
+    """Validate that CSV has required columns"""
+    missing_columns = [col for col in required_columns if col not in df.columns]
+    if missing_columns:
+        raise ValueError(f"Missing required columns: {', '.join(missing_columns)}")
+    return True
+
+# Update the process_csv_data function with validation
+def process_csv_data(df, data_type):
+    conn = sqlite3.connect('timetable.db')
+    cursor = conn.cursor()
+    success_count = 0
+    
+    try:
+        # Define required columns for each data type
+        required_columns = {
+            'departments': ['code', 'name'],
+            'subjects': ['code', 'name'],
+            'faculty': ['employee_id', 'name'],
+            'classrooms': ['name', 'capacity'],
+            'batches': ['name'],
+            'faculty_subjects': ['faculty_id', 'subject_id'],
+            'faculty_leaves': ['faculty_id', 'avg_leaves_per_month'],
+            'fixed_slots': ['batch_id', 'day', 'time_slot', 'subject_id']
+        }
+        
+        if data_type in required_columns:
+            validate_csv_columns(df, required_columns[data_type])
+        
+        # ... rest of the processing code remains the same
+        
+    except ValueError as e:
+        conn.rollback()
+        raise e
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+        
+    return success_count
+
+@app.route('/get_department_data/<int:department_id>')
+@login_required
+def get_department_data(department_id):
+    """Get batches and subjects for a specific department (AJAX)"""
+    conn = sqlite3.connect('timetable.db')
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Get batches for the department
+    cursor.execute('SELECT * FROM batches WHERE department_id = ? ORDER BY name', (department_id,))
+    batches = [dict(row) for row in cursor.fetchall()]
+    
+    # Get subjects for the department
+    cursor.execute('SELECT * FROM subjects WHERE department_id = ? ORDER BY name', (department_id,))
     subjects = [dict(row) for row in cursor.fetchall()]
     
     conn.close()

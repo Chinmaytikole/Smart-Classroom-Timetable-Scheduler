@@ -56,67 +56,72 @@
                         </div>
                     </div>
 
-                    <!-- Fixed Slots Section -->
-                    <div class="card mb-3">
-                        <div class="card-header bg-info text-white">
-                            <h6 class="mb-0"><i class="fas fa-lock"></i> Fixed Time Slots</h6>
-                        </div>
-                        <div class="card-body">
-                            <div id="fixedSlotsContainer">
-                                <div class="fixed-slot-entry mb-2 p-2 border rounded">
-                                    <div class="row">
-                                        <div class="col-md-3">
-                                            <select class="form-select form-select-sm" name="fixed_batch[]">
-                                                <option value="">Select Batch</option>
-                                                {% for batch in batches %}
-                                                <option value="{{ batch.id }}">{{ batch.name }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-                                        <div class="col-md-2">
-                                            <select class="form-select form-select-sm" name="fixed_day[]">
-                                                <option value="">Day</option>
-                                                <option value="Monday">Monday</option>
-                                                <option value="Tuesday">Tuesday</option>
-                                                <option value="Wednesday">Wednesday</option>
-                                                <option value="Thursday">Thursday</option>
-                                                <option value="Friday">Friday</option>
-                                                <option value="Saturday">Saturday</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-2">
-                                            <select class="form-select form-select-sm" name="fixed_time[]">
-                                                <option value="">Time</option>
-                                                <option value="9:00-10:00">9:00-10:00</option>
-                                                <option value="10:00-11:00">10:00-11:00</option>
-                                                <option value="11:00-12:00">11:00-12:00</option>
-                                                <option value="1:00-2:00">1:00-2:00</option>
-                                                <option value="2:00-3:00">2:00-3:00</option>
-                                                <option value="3:00-4:00">3:00-4:00</option>
-                                                <option value="4:00-5:00">4:00-5:00</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <select class="form-select form-select-sm" name="fixed_subject[]">
-                                                <option value="">Select Subject</option>
-                                                {% for subject in subjects %}
-                                                <option value="{{ subject.id }}">{{ subject.code }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-                                        <div class="col-md-2">
-                                            <button type="button" class="btn btn-sm btn-danger remove-fixed-slot">
-                                                <i class="fas fa-times"></i>
-                                            </button>
+                    <!-- In your generate_timetable.html, update the fixed slots section -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0"><i class="fas fa-lock"></i> Fixed Time Slots</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="fixedSlotsContainer">
+                                    <div class="fixed-slot-entry mb-2 p-2 border rounded">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label class="form-label small">Batch</label>
+                                                <select class="form-select form-select-sm" name="fixed_batch[]" required>
+                                                    <option value="">Select Batch</option>
+                                                    {% for batch in batches %}
+                                                    <option value="{{ batch.id }}">{{ batch.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label small">Day</label>
+                                                <select class="form-select form-select-sm" name="fixed_day[]" required>
+                                                    <option value="">Select Day</option>
+                                                    <option value="Monday">Monday</option>
+                                                    <option value="Tuesday">Tuesday</option>
+                                                    <option value="Wednesday">Wednesday</option>
+                                                    <option value="Thursday">Thursday</option>
+                                                    <option value="Friday">Friday</option>
+                                                    <option value="Saturday">Saturday</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label small">Time</label>
+                                                <select class="form-select form-select-sm" name="fixed_time[]" required>
+                                                    <option value="">Select Time</option>
+                                                    <option value="9:00-10:00">9:00-10:00</option>
+                                                    <option value="10:00-11:00">10:00-11:00</option>
+                                                    <option value="11:00-12:00">11:00-12:00</option>
+                                                    <option value="1:00-2:00">1:00-2:00</option>
+                                                    <option value="2:00-3:00">2:00-3:00</option>
+                                                    <option value="3:00-4:00">3:00-4:00</option>
+                                                    <option value="4:00-5:00">4:00-5:00</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label small">Subject</label>
+                                                <select class="form-select form-select-sm" name="fixed_subject[]" required>
+                                                    <option value="">Select Subject</option>
+                                                    {% for subject in subjects %}
+                                                    <option value="{{ subject.id }}">{{ subject.code }} - {{ subject.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label small">&nbsp;</label>
+                                                <button type="button" class="btn btn-sm btn-danger remove-fixed-slot w-100">
+                                                    <i class="fas fa-times"></i> Remove
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="addFixedSlot">
+                                    <i class="fas fa-plus"></i> Add Fixed Slot
+                                </button>
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="addFixedSlot">
-                                <i class="fas fa-plus"></i> Add Fixed Slot
-                            </button>
                         </div>
-                    </div>
                     
                     <div class="d-grid">
                         <button type="submit" class="btn btn-success btn-lg">
@@ -185,9 +190,39 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('department_id').addEventListener('change', function() {
         const departmentId = this.value;
         if (departmentId) {
-            // This would typically make an AJAX call to get batches and subjects
-            console.log('Department changed to:', departmentId);
-            // You would implement AJAX calls here to populate batches and subjects
+            // Fetch batches and subjects for the selected department
+            fetch(`/get_department_data/${departmentId}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Update batches dropdown
+                    const batchSelects = document.querySelectorAll('select[name="fixed_batch[]"]');
+                    batchSelects.forEach(select => {
+                        const currentValue = select.value;
+                        select.innerHTML = '<option value="">Select Batch</option>';
+                        data.batches.forEach(batch => {
+                            const option = document.createElement('option');
+                            option.value = batch.id;
+                            option.textContent = batch.name;
+                            select.appendChild(option);
+                        });
+                        select.value = currentValue;
+                    });
+
+                    // Update subjects dropdown
+                    const subjectSelects = document.querySelectorAll('select[name="fixed_subject[]"]');
+                    subjectSelects.forEach(select => {
+                        const currentValue = select.value;
+                        select.innerHTML = '<option value="">Select Subject</option>';
+                        data.subjects.forEach(subject => {
+                            const option = document.createElement('option');
+                            option.value = subject.id;
+                            option.textContent = `${subject.code} - ${subject.name}`;
+                            select.appendChild(option);
+                        });
+                        select.value = currentValue;
+                    });
+                })
+                .catch(error => console.error('Error:', error));
         }
     });
 });
