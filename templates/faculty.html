@@ -4,8 +4,8 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="fas fa-users"></i> Faculty</h1>
-{% if session.role == 'admin' %}
+    <h1><i class="fas fa-users"></i> Faculty Management</h1>
+    {% if session.role == 'admin' %}
     <div>
         <a href="{{ url_for('upload_csv') }}" class="btn btn-outline-primary me-2">
             <i class="fas fa-file-import"></i> Import CSV
@@ -14,7 +14,7 @@
             <i class="fas fa-plus"></i> Add Faculty
         </button>
     </div>
-{% endif %}
+    {% endif %}
 </div>
 
 <div class="card">
@@ -30,12 +30,10 @@
                         <th>Employee ID</th>
                         <th>Name</th>
                         <th>Department</th>
+                        <th>Subjects</th>
                         <th>Leaves/Month</th>
                         <th>Max Hours/Day</th>
-                        <th>Preferred Times</th>
-                        {% if session.role == 'admin' %}
                         <th>Actions</th>
-                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -45,6 +43,19 @@
                         <td>{{ fac.name }}</td>
                         <td>{{ fac.department_name or 'N/A' }}</td>
                         <td>
+                            {% set faculty_subjects = get_faculty_subjects(fac.id) %}
+                            {% if faculty_subjects %}
+                                {% for subject in faculty_subjects[:3] %}
+                                    <span class="badge bg-info mb-1">{{ subject.code }}</span>
+                                {% endfor %}
+                                {% if faculty_subjects|length > 3 %}
+                                    <span class="badge bg-secondary">+{{ faculty_subjects|length - 3 }} more</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">No subjects</span>
+                            {% endif %}
+                        </td>
+                        <td>
                             <span class="badge bg-{{ 'warning' if fac.avg_leaves_per_month and fac.avg_leaves_per_month > 2 else 'info' }}">
                                 {{ fac.avg_leaves_per_month or 0 }} days
                             </span>
@@ -53,16 +64,16 @@
                             <span class="badge bg-secondary">{{ fac.max_hours_per_day }} hours</span>
                         </td>
                         <td>
-                            <span class="badge bg-info">{{ fac.preferred_times or 'Any' }}</span>
-                        </td>
-                        {% if session.role == 'admin' %}
-                        <td>
-                            <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" 
+                            <a href="{{ url_for('faculty_subjects', faculty_id=fac.id) }}" class="btn btn-sm btn-outline-info" title="Manage Subjects">
+                                <i class="fas fa-book"></i>
+                            </a>
+                            <button class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" 
                                     data-bs-target="#manageLeavesModal" 
                                     data-id="{{ fac.id }}"
                                     data-name="{{ fac.name }}"
-                                    data-leaves="{{ fac.avg_leaves_per_month or 0 }}">
-                                <i class="fas fa-calendar-minus"></i> Leaves
+                                    data-leaves="{{ fac.avg_leaves_per_month or 0 }}"
+                                    title="Manage Leaves">
+                                <i class="fas fa-calendar-minus"></i>
                             </button>
                             <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" 
                                     data-bs-target="#editFacultyModal" 
@@ -71,17 +82,18 @@
                                     data-empid="{{ fac.employee_id }}"
                                     data-dept="{{ fac.department_id }}"
                                     data-hours="{{ fac.max_hours_per_day }}"
-                                    data-times="{{ fac.preferred_times }}">
+                                    data-times="{{ fac.preferred_times }}"
+                                    title="Edit Faculty">
                                 <i class="fas fa-edit"></i>
                             </button>
                             <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" 
                                     data-bs-target="#deleteFacultyModal" 
                                     data-id="{{ fac.id }}"
-                                    data-name="{{ fac.name }}">
+                                    data-name="{{ fac.name }}"
+                                    title="Delete Faculty">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </td>
-                        {% endif %}
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -91,7 +103,7 @@
         <div class="alert alert-info">
             <i class="fas fa-info-circle"></i> No faculty members found. Add some faculty to get started.
         </div>
-    {% endif %}
+        {% endif %}
     </div>
 </div>
 
@@ -99,8 +111,8 @@
 <div class="modal fade" id="manageLeavesModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title"><i class="fas fa-calendar-minus"></i> Manage Leaves</h5>
+            <div class="modal-header bg-warning text-white">
+                <h5 class="modal-title"><i class="fas fa-calendar-minus"></i> Manage Faculty Leaves</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" action="{{ url_for('update_faculty_leaves') }}">
@@ -111,12 +123,12 @@
                         <label class="form-label">Average Leaves Per Month</label>
                         <input type="number" class="form-control" name="avg_leaves_per_month" 
                                id="manageLeavesCount" min="0" max="10" step="0.5" required>
-                        <div class="form-text">Average number of leave days taken per month</div>
+                        <div class="form-text">Average number of leave days taken per month (affects scheduling)</div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-info">Update Leaves</button>
+                    <button type="submit" class="btn btn-warning">Update Leaves</button>
                 </div>
             </form>
         </div>

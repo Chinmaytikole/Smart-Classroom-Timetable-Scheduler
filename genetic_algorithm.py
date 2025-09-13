@@ -62,13 +62,19 @@ class GeneticTimetable:
         return random.choice(eligible_faculty) if eligible_faculty else None
     
     def can_teach_subject(self, faculty, subject_id):
-        # This is a simplified version - in a real system, you'd have a mapping
-        # between faculty and subjects they can teach
-        # For now, we'll assume faculty can teach any subject in their department
-        subject = self.subject_map.get(subject_id)
-        if subject and faculty['department_id'] == subject['department_id']:
-            return True
-        return False
+        """Check if faculty can teach this subject based on faculty_subjects table"""
+        conn = sqlite3.connect('timetable.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT COUNT(*) FROM faculty_subjects 
+            WHERE faculty_id = ? AND subject_id = ?
+        ''', (faculty['id'], subject_id))
+        
+        can_teach = cursor.fetchone()[0] > 0
+        conn.close()
+    
+        return can_teach
     
     def get_available_classroom(self, subject_type):
         # Filter classrooms based on subject type

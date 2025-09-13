@@ -168,6 +168,14 @@ def init_db():
         )
     ''')
 
+    cursor.execute('''
+                INSERT OR IGNORE INTO fixed_slots 
+                (batch_id, day, time_slot, subject_id, faculty_id, classroom_id)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (
+                2, 'Monday', '10:00-11:00', 9, 6, 5
+            ))
+
     
     # Create default admin user if not exists
     cursor.execute("SELECT COUNT(*) FROM users WHERE username = 'admin'")
@@ -328,6 +336,7 @@ def generate_timetable():
     conn.close()
     return render_template('generate_timetable.html', departments=departments)
 
+
 @app.route('/generate_timetable_process', methods=['POST'])
 @login_required
 def generate_timetable_process():
@@ -362,6 +371,8 @@ def generate_timetable_process():
     cursor.execute('SELECT * FROM batches WHERE department_id = ? AND semester = ?', (department_id, semester))
     batches = [dict(row) for row in cursor.fetchall()]
     print(f"Found {len(batches)} batches")
+
+    
     
     if not subjects or not faculty or not classrooms or not batches:
         flash('Insufficient data for timetable generation. Please ensure you have subjects, faculty, classrooms, and batches defined.', 'error')
@@ -454,6 +465,7 @@ def generate_timetable_process():
         return redirect(url_for('generate_timetable'))
     finally:
         conn.close()
+        
 
 def get_fixed_slots():
     """Get fixed slots from database"""
@@ -611,19 +623,20 @@ def faculty():
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
+    # Get faculty with leave information
     cursor.execute('''
-        SELECT f.*, d.name as department_name
+        SELECT f.*, d.name as department_name, fl.avg_leaves_per_month,
+               (SELECT COUNT(*) FROM faculty_subjects fs WHERE fs.faculty_id = f.id) as subject_count
         FROM faculty f
         LEFT JOIN departments d ON f.department_id = d.id
+        LEFT JOIN faculty_leaves fl ON f.id = fl.faculty_id
         ORDER BY f.name
     ''')
+    
     faculty = cursor.fetchall()
     
-    cursor.execute('SELECT * FROM departments ORDER BY name')
-    departments = cursor.fetchall()
-    
     conn.close()
-    return render_template('faculty.html', faculty=faculty, departments=departments)
+    return render_template('faculty.html', faculty=faculty)
 
 @app.route('/classrooms')
 @login_required  
