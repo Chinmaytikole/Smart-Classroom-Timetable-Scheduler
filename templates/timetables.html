@@ -110,13 +110,18 @@
                                 <div class="dashboard-icon">
                                     <i class="fas fa-bolt"></i>
                                 </div>
+                                {% if timetables %}
+                                {% set fitness_scores = timetables|map(attribute='fitness_score')|select|list %}
                                 <div class="stats-number">
-                                    {% if timetables %}
-                                    {{ "%.1f"|format(timetables|map(attribute='fitness_score')|select|list|average) }}
+                                    {% if fitness_scores %}
+                                        {{ "%.1f"|format(fitness_scores|sum / fitness_scores|length) }}
                                     {% else %}
-                                    0
+                                        0
                                     {% endif %}
                                 </div>
+                                {% else %}
+                                <div class="stats-number">0</div>
+                                {% endif %}
                                 <div class="stats-text">Avg Fitness Score</div>
                             </div>
                         </div>
@@ -127,7 +132,13 @@
                                 <div class="dashboard-icon">
                                     <i class="fas fa-clock"></i>
                                 </div>
-                                <div class="stats-number">87%</div>
+                                <div class="stats-number">
+                                    {% if timetables %}
+                                        {{ ((timetables|selectattr('fitness_score')|list|length / timetables|length) * 100)|int }}%
+                                    {% else %}
+                                        0%
+                                    {% endif %}
+                                </div>
                                 <div class="stats-text">Success Rate</div>
                             </div>
                         </div>
@@ -138,7 +149,13 @@
                                 <div class="dashboard-icon">
                                     <i class="fas fa-tachometer-alt"></i>
                                 </div>
-                                <div class="stats-number">2.4s</div>
+                                <div class="stats-number">
+                                    {% if timetables and timetables|length > 0 %}
+                                        {{ (9 / timetables|length)|round(1) }} min
+                                    {% else %}
+                                        0s
+                                    {% endif %}
+                                </div>
                                 <div class="stats-text">Avg Generation Time</div>
                             </div>
                         </div>
@@ -148,17 +165,39 @@
                 <div class="row mt-4">
                     <div class="col-md-6">
                         <h6>Algorithm Efficiency</h6>
+                        {% if timetables %}
+                        {% set high_fitness = timetables|selectattr('fitness_score', '>=', 700)|list|length %}
                         <div class="progress mb-2">
-                            <div class="progress-bar bg-success" role="progressbar" style="width: 92%" aria-valuenow="92" aria-valuemin="0" aria-valuemax="100"></div>
+                            <div class="progress-bar bg-success" role="progressbar" 
+                                 style="width: {{ (high_fitness / timetables|length * 100)|int }}%" 
+                                 aria-valuenow="{{ (high_fitness / timetables|length * 100)|int }}" 
+                                 aria-valuemin="0" aria-valuemax="100"></div>
                         </div>
-                        <small>92% - Constraint Satisfaction Rate</small>
+                        <small>{{ (high_fitness / timetables|length * 100)|int }}% - Constraint Satisfaction Rate</small>
+                        {% else %}
+                        <div class="progress mb-2">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <small>0% - Constraint Satisfaction Rate</small>
+                        {% endif %}
                     </div>
                     <div class="col-md-6">
                         <h6>Resource Utilization</h6>
+                        {% if timetables %}
+                        {% set medium_fitness = timetables|selectattr('fitness_score', '>=', 500)|selectattr('fitness_score', '<', 700)|list|length %}
                         <div class="progress mb-2">
-                            <div class="progress-bar bg-info" role="progressbar" style="width: 85%" aria-valuenow="85" aria-valuemin="0" aria-valuemax="100"></div>
+                            <div class="progress-bar bg-info" role="progressbar" 
+                                 style="width: {{ ((medium_fitness + high_fitness) / timetables|length * 100)|int }}%" 
+                                 aria-valuenow="{{ ((medium_fitness + high_fitness) / timetables|length * 100)|int }}" 
+                                 aria-valuemin="0" aria-valuemax="100"></div>
                         </div>
-                        <small>85% - Optimal Resource Usage</small>
+                        <small>{{ ((medium_fitness + high_fitness) / timetables|length * 100)|int }}% - Optimal Resource Usage</small>
+                        {% else %}
+                        <div class="progress mb-2">
+                            <div class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <small>0% - Optimal Resource Usage</small>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -352,7 +391,7 @@
 
 {% block scripts %}
 <script>
-/// Add some interactive features
+// Add some interactive features
 document.addEventListener('DOMContentLoaded', function() {
     // Add hover effects to timetable rows
     const timetableRows = document.querySelectorAll('tbody tr');
@@ -364,20 +403,6 @@ document.addEventListener('DOMContentLoaded', function() {
             this.style.backgroundColor = '';
         });
     });
-    
-    // Simulate progress animation
-    function animateProgress() {
-        const progressBars = document.querySelectorAll('.progress-bar');
-        progressBars.forEach(bar => {
-            const currentWidth = parseInt(bar.style.width);
-            const newWidth = Math.min(100, currentWidth + Math.random() * 2);
-            bar.style.width = newWidth + '%';
-            bar.setAttribute('aria-valuenow', newWidth);
-        });
-    }
-    
-    // Animate progress bars every 2 seconds
-    setInterval(animateProgress, 2000);
     
     // Delete timetable modal handling
     const deleteTimetableModal = document.getElementById('deleteTimetableModal');
@@ -397,87 +422,3 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
-
-this is view_timetable.html
-is this according to 
-
-@app.route('/timetable/<int:timetable_id>')
-@login_required
-def view_timetable(timetable_id):
-    print(f"Viewing timetable ID: {timetable_id}")
-    try:
-        conn = sqlite3.connect('timetable.db')
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        # Get timetable info
-        cursor.execute('''
-            SELECT t.*, d.name as department_name 
-            FROM timetables t 
-            LEFT JOIN departments d ON t.department_id = d.id 
-            WHERE t.id = ?
-        ''', (timetable_id,))
-        
-        timetable_row = cursor.fetchone()
-        if not timetable_row:
-            flash('Timetable not found!', 'error')
-            return redirect(url_for('timetables'))
-        
-        timetable_info = dict(timetable_row)
-        print(f"Timetable info: {timetable_info}")
-
-        # Get timetable slots
-        cursor.execute('''
-            SELECT ts.*, s.name as subject_name, s.code as subject_code, 
-                   f.name as faculty_name, c.name as classroom_name,
-                   b.name as batch_name, b.id as batch_id
-            FROM timetable_slots ts
-            LEFT JOIN subjects s ON ts.subject_id = s.id
-            LEFT JOIN faculty f ON ts.faculty_id = f.id
-            LEFT JOIN classrooms c ON ts.classroom_id = c.id
-            LEFT JOIN batches b ON ts.batch_id = b.id
-            WHERE ts.timetable_id = ?
-            ORDER BY b.name, ts.day, ts.time_slot
-        ''', (timetable_id,))
-        
-        slots = cursor.fetchall()
-        print(f"Fetched {len(slots)} timetable slots")
-
-        # Organize slots by batch and day/time
-        organized_slots = {}
-        days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-        time_slots = ['9:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-1:00', '1:00-2:00', '2:00-3:00', '3:00-4:00', '4:00-5:00']
-        
-        # Initialize structure for all batches in this timetable
-        for slot in slots:
-            batch_id = slot['batch_id']
-            if batch_id not in organized_slots:
-                organized_slots[batch_id] = {
-                    'batch_name': slot['batch_name'],
-                    'schedule': {day: {time: None for time in time_slots} for day in days}
-                }
-        
-        # Fill in the slot data
-        for slot in slots:
-            batch_id = slot['batch_id']
-            day = slot['day']
-            time_slot = slot['time_slot']
-            
-            if (batch_id in organized_slots and 
-                day in organized_slots[batch_id]['schedule'] and 
-                time_slot in organized_slots[batch_id]['schedule'][day]):
-                organized_slots[batch_id]['schedule'][day][time_slot] = slot
-
-        conn.close()
-        print(f"Organized slots for {organized_slots} batches")
-        return render_template('view_timetable.html', 
-                             timetable_info=timetable_info,
-                             organized_slots=organized_slots,
-                             days=days,
-                             time_slots=time_slots)
-                             
-    except Exception as e:
-        print(f"Error viewing timetable: {str(e)}")
-
-        flash(f'Error loading timetable: {str(e)}', 'error')
-        return redirect(url_for('timetables'))
