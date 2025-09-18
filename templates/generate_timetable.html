@@ -3,29 +3,43 @@
 {% block title %}Generate Timetable - Intelligent Timetable System{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="fas fa-cog"></i> Generate Timetable</h1>
-</div>
-
-<div class="row">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
-                <h5><i class="fas fa-robot"></i> AI-Powered Timetable Generation</h5>
+<div class="dashboard-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="header-content">
+            <div>
+                <h1 class="main-title">
+                    <i class="fas fa-cog title-icon"></i> Generate Timetable
+                </h1>
+                <p class="welcome-text">Create optimized timetables using our AI-powered genetic algorithm</p>
             </div>
-            <div class="card-body">
+        </div>
+        <div class="header-glow"></div>
+    </div>
+
+    <div class="content-grid">
+        <!-- Main Form Card -->
+        <div class="content-card">
+            <div class="card-header">
+                <h5 class="card-title">
+                    <i class="fas fa-robot card-icon"></i> AI-Powered Timetable Generation
+                </h5>
+            </div>
+            <div class="card-content">
                 <form method="POST" action="{{ url_for('generate_timetable_process') }}">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="name" class="form-label">Timetable Name</label>
-                                <input type="text" class="form-control" id="name" name="name" required>
+                                <input type="text" class="form-control" id="name" name="name" required
+                                       style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="department_id" class="form-label">Department</label>
-                                <select class="form-select" id="department_id" name="department_id" required>
+                                <select class="form-select" id="department_id" name="department_id" required
+                                        style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
                                     <option value="">Select Department</option>
                                     {% for dept in departments %}
                                     <option value="{{ dept.id }}">{{ dept.name }} ({{ dept.code }})</option>
@@ -39,7 +53,8 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="semester" class="form-label">Semester</label>
-                                <select class="form-select" id="semester" name="semester" required>
+                                <select class="form-select" id="semester" name="semester" required
+                                        style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
                                     <option value="">Select Semester</option>
                                     {% for sem in range(1, 9) %}
                                     <option value="{{ sem }}">Semester {{ sem }}</option>
@@ -50,115 +65,184 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="max_classes_per_day" class="form-label">Max Classes Per Day</label>
-                                <input type="number" class="form-control" id="max_classes_per_day" name="max_classes_per_day" value="6" min="1" max="10">
-                                <div class="form-text">Maximum classes per day for each batch</div>
+                                <input type="number" class="form-control" id="max_classes_per_day" name="max_classes_per_day" value="6" min="1" max="10"
+                                       style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
+                                <div class="form-text" style="color: var(--text-muted);">Maximum classes per day for each batch</div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- In your generate_timetable.html, update the fixed slots section -->
-                        <div class="card mb-3">
-                            <div class="card-header bg-info text-white">
-                                <h6 class="mb-0"><i class="fas fa-lock"></i> Fixed Time Slots</h6>
-                            </div>
-                            <div class="card-body">
-                                <div id="fixedSlotsContainer">
-                                    <div class="fixed-slot-entry mb-2 p-2 border rounded">
-                                        <div class="row">
-                                            <div class="col-md-3">
-                                                <label class="form-label small">Batch</label>
-                                                <select class="form-select form-select-sm" name="fixed_batch[]" required>
-                                                    <option value="">Select Batch</option>
-                                                    {% for batch in batches %}
-                                                    <option value="{{ batch.id }}">{{ batch.name }}</option>
-                                                    {% endfor %}
-                                                </select>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <label class="form-label small">Day</label>
-                                                <select class="form-select form-select-sm" name="fixed_day[]" required>
-                                                    <option value="">Select Day</option>
-                                                    <option value="Monday">Monday</option>
-                                                    <option value="Tuesday">Tuesday</option>
-                                                    <option value="Wednesday">Wednesday</option>
-                                                    <option value="Thursday">Thursday</option>
-                                                    <option value="Friday">Friday</option>
-                                                    <option value="Saturday">Saturday</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <label class="form-label small">Time</label>
-                                                <select class="form-select form-select-sm" name="fixed_time[]" required>
-                                                    <option value="">Select Time</option>
-                                                    <option value="9:00-10:00">9:00-10:00</option>
-                                                    <option value="10:00-11:00">10:00-11:00</option>
-                                                    <option value="11:00-12:00">11:00-12:00</option>
-                                                    <option value="1:00-2:00">1:00-2:00</option>
-                                                    <option value="2:00-3:00">2:00-3:00</option>
-                                                    <option value="3:00-4:00">3:00-4:00</option>
-                                                    <option value="4:00-5:00">4:00-5:00</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <label class="form-label small">Subject</label>
-                                                <select class="form-select form-select-sm" name="fixed_subject[]" required>
-                                                    <option value="">Select Subject</option>
-                                                    {% for subject in subjects %}
-                                                    <option value="{{ subject.id }}">{{ subject.code }} - {{ subject.name }}</option>
-                                                    {% endfor %}
-                                                </select>
-                                            </div>
-                                            <div class="col-md-2">
-                                                <label class="form-label small">&nbsp;</label>
-                                                <button type="button" class="btn btn-sm btn-danger remove-fixed-slot w-100">
-                                                    <i class="fas fa-times"></i> Remove
-                                                </button>
-                                            </div>
+                    <!-- Fixed Time Slots Section -->
+                    <div class="content-card" style="margin-bottom: 1.5rem;">
+                        <div class="card-header" style="background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));">
+                            <h6 class="card-title mb-0"><i class="fas fa-lock"></i> Fixed Time Slots</h6>
+                        </div>
+                        <div class="card-content">
+                            <div id="fixedSlotsContainer">
+                                <div class="fixed-slot-entry mb-2 p-2 border rounded" style="border-color: var(--border-color) !important;">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <label class="form-label small">Batch</label>
+                                            <select class="form-select form-select-sm" name="fixed_batch[]" required
+                                                    style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
+                                                <option value="">Select Batch</option>
+                                                {% for batch in batches %}
+                                                <option value="{{ batch.id }}">{{ batch.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label small">Day</label>
+                                            <select class="form-select form-select-sm" name="fixed_day[]" required
+                                                    style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
+                                                <option value="">Select Day</option>
+                                                <option value="Monday">Monday</option>
+                                                <option value="Tuesday">Tuesday</option>
+                                                <option value="Wednesday">Wednesday</option>
+                                                <option value="Thursday">Thursday</option>
+                                                <option value="Friday">Friday</option>
+                                                <option value="Saturday">Saturday</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label small">Time</label>
+                                            <select class="form-select form-select-sm" name="fixed_time[]" required
+                                                    style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
+                                                <option value="">Select Time</option>
+                                                <option value="9:00-10:00">9:00-10:00</option>
+                                                <option value="10:00-11:00">10:00-11:00</option>
+                                                <option value="11:00-12:00">11:00-12:00</option>
+                                                <option value="1:00-2:00">1:00-2:00</option>
+                                                <option value="2:00-3:00">2:00-3:00</option>
+                                                <option value="3:00-4:00">3:00-4:00</option>
+                                                <option value="4:00-5:00">4:00-5:00</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small">Subject</label>
+                                            <select class="form-select form-select-sm" name="fixed_subject[]" required
+                                                    style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
+                                                <option value="">Select Subject</option>
+                                                {% for subject in subjects %}
+                                                <option value="{{ subject.id }}">{{ subject.code }} - {{ subject.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label small">&nbsp;</label>
+                                            <button type="button" class="action-btn action-primary remove-fixed-slot w-100" style="padding: 0.25rem 0.5rem;">
+                                                <i class="fas fa-times"></i> Remove
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="addFixedSlot">
-                                    <i class="fas fa-plus"></i> Add Fixed Slot
-                                </button>
                             </div>
+                            <button type="button" class="action-btn action-cyan mt-2" id="addFixedSlot" style="padding: 0.5rem 1rem;">
+                                <i class="fas fa-plus"></i> Add Fixed Slot
+                            </button>
                         </div>
+                    </div>
                     
                     <div class="d-grid">
-                        <button type="submit" class="btn btn-success btn-lg">
+                        <button type="submit" class="action-btn action-green btn-lg">
                             <i class="fas fa-robot"></i> Generate Optimized Timetable
                         </button>
                     </div>
                 </form>
             </div>
         </div>
-    </div>
-    
-    <div class="col-md-4">
-        <div class="card">
+        
+        <!-- Info Card -->
+        <div class="content-card">
             <div class="card-header">
-                <h5><i class="fas fa-info-circle"></i> Generation Process</h5>
+                <h5 class="card-title">
+                    <i class="fas fa-info-circle card-icon"></i> Generation Process
+                </h5>
             </div>
-            <div class="card-body">
+            <div class="card-content">
                 <p><strong>Our AI system considers:</strong></p>
                 <ul class="list-unstyled">
-                    <li><i class="fas fa-check text-success"></i> Faculty availability & leaves</li>
-                    <li><i class="fas fa-check text-success"></i> Classroom capacity</li>
-                    <li><i class="fas fa-check text-success"></i> Subject requirements</li>
-                    <li><i class="fas fa-check text-success"></i> Workload distribution</li>
-                    <li><i class="fas fa-check text-success"></i> Fixed time slots</li>
-                    <li><i class="fas fa-check text-success"></i> Max classes per day limits</li>
-                    <li><i class="fas fa-check text-success"></i> Faculty leave considerations</li>
+                    <li><i class="fas fa-check" style="color: var(--accent-green);"></i> Faculty availability & leaves</li>
+                    <li><i class="fas fa-check" style="color: var(--accent-green);"></i> Classroom capacity</li>
+                    <li><i class="fas fa-check" style="color: var(--accent-green);"></i> Subject requirements</li>
+                    <li><i class="fas fa-check" style="color: var(--accent-green);"></i> Workload distribution</li>
+                    <li><i class="fas fa-check" style="color: var(--accent-green);"></i> Fixed time slots</li>
+                    <li><i class="fas fa-check" style="color: var(--accent-green);"></i> Max classes per day limits</li>
+                    <li><i class="fas fa-check" style="color: var(--accent-green);"></i> Faculty leave considerations</li>
                 </ul>
                 
-                <div class="alert alert-info">
-                    <i class="fas fa-lightbulb"></i>
+                <div class="alert" style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-secondary);">
+                    <i class="fas fa-lightbulb" style="color: var(--accent-blue);"></i>
                     <small>The enhanced genetic algorithm ensures optimal scheduling while respecting all constraints including fixed slots and faculty availability.</small>
                 </div>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
+
+<style>
+/* Form control styling */
+.form-control, .form-select {
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--accent-blue) !important;
+    box-shadow: 0 0 0 0.2rem rgba(0, 212, 255, 0.25) !important;
+}
+
+.form-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.form-text {
+    color: var(--text-muted) !important;
+    font-size: 0.875rem;
+}
+
+/* Fixed slots styling */
+.fixed-slot-entry {
+    background: var(--bg-secondary);
+    border-color: var(--border-color) !important;
+}
+
+.fixed-slot-entry:hover {
+    background: var(--bg-hover);
+}
+
+/* Content grid for two-column layout */
+.content-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+@media (max-width: 1024px) {
+    .content-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* List styling */
+.list-unstyled li {
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Alert styling */
+.alert {
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+</style>
 
 {% block scripts %}
 <script>
@@ -178,8 +262,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Remove fixed slot functionality
     document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('remove-fixed-slot')) {
-            const entry = e.target.closest('.fixed-slot-entry');
+        if (e.target.classList.contains('remove-fixed-slot') || e.target.closest('.remove-fixed-slot')) {
+            const button = e.target.classList.contains('remove-fixed-slot') ? e.target : e.target.closest('.remove-fixed-slot');
+            const entry = button.closest('.fixed-slot-entry');
             if (document.querySelectorAll('.fixed-slot-entry').length > 1) {
                 entry.remove();
             }
@@ -227,4 +312,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+{% endblock %}
 {% endblock %}

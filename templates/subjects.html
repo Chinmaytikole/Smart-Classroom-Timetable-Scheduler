@@ -3,84 +3,109 @@
 {% block title %}Subjects - Intelligent Timetable System{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="fas fa-book"></i> Subjects</h1>
-    {% if session.role == 'admin' %}
-    <div>
-        <a href="{{ url_for('upload_csv') }}" class="btn btn-outline-primary me-2">
-            <i class="fas fa-file-import"></i> Import CSV
-        </a>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSubjectModal">
-            <i class="fas fa-plus"></i> Add Subject
-        </button>
+<div class="dashboard-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="header-content">
+            <div>
+                <h1 class="main-title">
+                    <i class="fas fa-book title-icon"></i> Subjects
+                </h1>
+                <p class="welcome-text">Manage all academic subjects in the system</p>
+            </div>
+            {% if session.role == 'admin' %}
+            <div style="display: flex; gap: 0.75rem;">
+                <a href="{{ url_for('upload_csv') }}" class="action-btn action-cyan">
+                    <i class="fas fa-file-import"></i> Import CSV
+                </a>
+                <button class="action-btn action-green" data-bs-toggle="modal" data-bs-target="#addSubjectModal">
+                    <i class="fas fa-plus"></i> Add Subject
+                </button>
+            </div>
+            {% endif %}
+        </div>
+        <div class="header-glow"></div>
     </div>
-    {% endif %}
-</div>
 
-<div class="card">
-    <div class="card-header bg-primary text-white">
-        <h5 class="mb-0"><i class="fas fa-list"></i> All Subjects</h5>
-    </div>
-    <div class="card-body">
-        {% if subjects %}
-        <div class="table-responsive">
-            <table class="table table-striped table-hover">
-                <thead>
-                    <tr>
-                        <th>Code</th>
-                        <th>Name</th>
-                        <th>Department</th>
-                        <th>Type</th>
-                        <th>Classes/Week</th>
-                        {% if session.role == 'admin' %}
-                        <th>Actions</th>
-                        {% endif %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for subject in subjects %}
-                    <tr>
-                        <td class="fw-bold">{{ subject.code }}</td>
-                        <td>{{ subject.name }}</td>
-                        <td>{{ subject.department_name or 'N/A' }}</td>
-                        <td>
-                            <span class="badge bg-{{ 'info' if subject.subject_type == 'THEORY' else 'warning' }}">
-                                {{ subject.subject_type }}
-                            </span>
-                        </td>
-                        <td>
-                            <span class="badge bg-secondary">{{ subject.classes_per_week }}</span>
-                        </td>
-                        {% if session.role == 'admin' %}
-                        <td>
-                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" 
-                                    data-bs-target="#editSubjectModal" 
-                                    data-id="{{ subject.id }}"
-                                    data-name="{{ subject.name }}"
-                                    data-code="{{ subject.code }}"
-                                    data-dept="{{ subject.department_id }}"
-                                    data-type="{{ subject.subject_type }}"
-                                    data-classes="{{ subject.classes_per_week }}">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" 
-                                    data-bs-target="#deleteSubjectModal" 
-                                    data-id="{{ subject.id }}"
-                                    data-name="{{ subject.name }}">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                        {% endif %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <!-- Main Content -->
+    <div class="content-card">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-list card-icon"></i> All Subjects
+            </h5>
         </div>
-        {% else %}
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle"></i> No subjects found. Add some subjects to get started.
+        <div class="card-content">
+            {% if subjects %}
+            <div class="table-container">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Name</th>
+                            <th>Department</th>
+                            <th>Type</th>
+                            <th>Classes/Week</th>
+                            {% if session.role == 'admin' %}
+                            <th>Actions</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for subject in subjects %}
+                        <tr class="table-row">
+                            <td class="table-cell fw-bold">{{ subject.code }}</td>
+                            <td class="table-cell">{{ subject.name }}</td>
+                            <td class="table-cell">{{ subject.department_name or 'N/A' }}</td>
+                            <td class="table-cell">
+                                <span class="fitness-badge fitness-{{ 'info' if subject.subject_type == 'THEORY' else 'warning' if subject.subject_type == 'LAB' else 'success' }}">
+                                    {{ subject.subject_type }}
+                                </span>
+                            </td>
+                            <td class="table-cell">
+                                <span class="badge bg-secondary">{{ subject.classes_per_week }}</span>
+                            </td>
+                            {% if session.role == 'admin' %}
+                            <td class="table-cell">
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button class="action-btn action-blue" data-bs-toggle="modal" 
+                                            data-bs-target="#editSubjectModal" 
+                                            data-id="{{ subject.id }}"
+                                            data-name="{{ subject.name }}"
+                                            data-code="{{ subject.code }}"
+                                            data-dept="{{ subject.department_id }}"
+                                            data-type="{{ subject.subject_type }}"
+                                            data-classes="{{ subject.classes_per_week }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="action-btn action-primary" data-bs-toggle="modal" 
+                                            data-bs-target="#deleteSubjectModal" 
+                                            data-id="{{ subject.id }}"
+                                            data-name="{{ subject.name }}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-info-circle"></i>
+                </div>
+                <h4>No Subjects Found</h4>
+                <p>Add some subjects to get started with timetable generation.</p>
+                {% if session.role == 'admin' %}
+                <button class="action-btn action-green" data-bs-toggle="modal" data-bs-target="#addSubjectModal" style="margin-top: 1rem;">
+                    <i class="fas fa-plus"></i> Add Your First Subject
+                </button>
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
-        {% endif %}
     </div>
 </div>
 
@@ -88,8 +113,8 @@
 <!-- Add Subject Modal -->
 <div class="modal fade" id="addSubjectModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+        <div class="modal-content" style="background: var(--bg-card); color: var(--text-primary);">
+            <div class="modal-header" style="background: var(--accent-green); color: white;">
                 <h5 class="modal-title"><i class="fas fa-plus"></i> Add New Subject</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -97,15 +122,18 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">Subject Code</label>
-                        <input type="text" class="form-control" name="code" required>
+                        <input type="text" class="form-control" name="code" required
+                               style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Subject Name</label>
-                        <input type="text" class="form-control" name="name" required>
+                        <input type="text" class="form-control" name="name" required
+                               style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Department</label>
-                        <select class="form-select" name="department_id" required>
+                        <select class="form-select" name="department_id" required
+                                style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
                             <option value="">Select Department</option>
                             {% for dept in departments %}
                             <option value="{{ dept.id }}">{{ dept.name }}</option>
@@ -114,7 +142,8 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Subject Type</label>
-                        <select class="form-select" name="subject_type" required>
+                        <select class="form-select" name="subject_type" required
+                                style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
                             <option value="THEORY">Theory</option>
                             <option value="LAB">Lab</option>
                             <option value="PROJECT">Project</option>
@@ -122,12 +151,13 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Classes per Week</label>
-                        <input type="number" class="form-control" name="classes_per_week" value="3" min="1" max="10" required>
+                        <input type="number" class="form-control" name="classes_per_week" value="3" min="1" max="10" required
+                               style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Subject</button>
+                <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                    <button type="button" class="action-btn" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="action-btn action-green">Add Subject</button>
                 </div>
             </form>
         </div>
@@ -137,8 +167,8 @@
 <!-- Edit Subject Modal -->
 <div class="modal fade" id="editSubjectModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+        <div class="modal-content" style="background: var(--bg-card); color: var(--text-primary);">
+            <div class="modal-header" style="background: var(--accent-blue); color: white;">
                 <h5 class="modal-title"><i class="fas fa-edit"></i> Edit Subject</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -147,15 +177,18 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">Subject Code</label>
-                        <input type="text" class="form-control" name="code" id="editSubjectCode" required>
+                        <input type="text" class="form-control" name="code" id="editSubjectCode" required
+                               style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Subject Name</label>
-                        <input type="text" class="form-control" name="name" id="editSubjectName" required>
+                        <input type="text" class="form-control" name="name" id="editSubjectName" required
+                               style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Department</label>
-                        <select class="form-select" name="department_id" id="editSubjectDept" required>
+                        <select class="form-select" name="department_id" id="editSubjectDept" required
+                                style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
                             <option value="">Select Department</option>
                             {% for dept in departments %}
                             <option value="{{ dept.id }}">{{ dept.name }}</option>
@@ -164,7 +197,8 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Subject Type</label>
-                        <select class="form-select" name="subject_type" id="editSubjectType" required>
+                        <select class="form-select" name="subject_type" id="editSubjectType" required
+                                style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
                             <option value="THEORY">Theory</option>
                             <option value="LAB">Lab</option>
                             <option value="PROJECT">Project</option>
@@ -172,12 +206,13 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Classes per Week</label>
-                        <input type="number" class="form-control" name="classes_per_week" id="editSubjectClasses" min="1" max="10" required>
+                        <input type="number" class="form-control" name="classes_per_week" id="editSubjectClasses" min="1" max="10" required
+                               style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Update Subject</button>
+                <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                    <button type="button" class="action-btn" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="action-btn action-blue">Update Subject</button>
                 </div>
             </form>
         </div>
@@ -187,8 +222,8 @@
 <!-- Delete Subject Modal -->
 <div class="modal fade" id="deleteSubjectModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
+        <div class="modal-content" style="background: var(--bg-card); color: var(--text-primary);">
+            <div class="modal-header" style="background: var(--accent-red); color: white;">
                 <h5 class="modal-title"><i class="fas fa-trash"></i> Delete Subject</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -196,17 +231,73 @@
                 <input type="hidden" name="subject_id" id="deleteSubjectId">
                 <div class="modal-body">
                     <p>Are you sure you want to delete the subject <strong id="deleteSubjectName"></strong>?</p>
-                    <p class="text-danger">This action cannot be undone and may affect existing timetables.</p>
+                    <p style="color: var(--accent-red);">This action cannot be undone and may affect existing timetables.</p>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger">Delete Subject</button>
+                <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                    <button type="button" class="action-btn" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="action-btn action-primary">Delete Subject</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 {% endif %}
+
+<style>
+/* Custom badge styles for subject types */
+.fitness-badge.fitness-info {
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+    color: white;
+}
+
+.fitness-badge.fitness-warning {
+    background: linear-gradient(135deg, var(--accent-orange), #f59e0b);
+    color: white;
+}
+
+.fitness-badge.fitness-success {
+    background: linear-gradient(135deg, var(--accent-green), #22c55e);
+    color: white;
+}
+
+.fitness-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: center;
+    display: inline-block;
+}
+
+/* Override Bootstrap badge styles to match our theme */
+.badge.bg-secondary {
+    background: var(--bg-tertiary) !important;
+    color: var(--text-secondary) !important;
+}
+
+/* Form control styling */
+.form-control, .form-select {
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--accent-blue) !important;
+    box-shadow: 0 0 0 0.2rem rgba(0, 212, 255, 0.25) !important;
+}
+
+.form-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.form-text {
+    color: var(--text-muted) !important;
+    font-size: 0.875rem;
+}
+</style>
 
 {% block scripts %}
 <script>
@@ -226,6 +317,19 @@ document.getElementById('deleteSubjectModal').addEventListener('show.bs.modal', 
     var button = event.relatedTarget;
     document.getElementById('deleteSubjectId').value = button.getAttribute('data-id');
     document.getElementById('deleteSubjectName').textContent = button.getAttribute('data-name');
+});
+
+// Add hover effects to table rows
+document.addEventListener('DOMContentLoaded', function() {
+    const tableRows = document.querySelectorAll('.table-row');
+    tableRows.forEach(row => {
+        row.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = 'var(--bg-hover)';
+        });
+        row.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = '';
+        });
+    });
 });
 </script>
 {% endblock %}

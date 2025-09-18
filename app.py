@@ -631,8 +631,12 @@ def faculty():
     
     faculty = cursor.fetchall()
     
+    # Get departments for the dropdown menus
+    cursor.execute('SELECT * FROM departments ORDER BY name')
+    departments = cursor.fetchall()
+    
     conn.close()
-    return render_template('faculty.html', faculty=faculty)
+    return render_template('faculty.html', faculty=faculty, departments=departments)
 
 @app.route('/classrooms')
 @login_required  
@@ -958,6 +962,8 @@ def add_faculty():
     
     return redirect(url_for('faculty'))
 
+
+
 @app.route('/edit_faculty', methods=['POST'])
 @admin_required
 def edit_faculty():
@@ -970,7 +976,8 @@ def edit_faculty():
     
     conn = sqlite3.connect('timetable.db')
     cursor = conn.cursor()
-    
+    cursor.execute('SELECT * FROM departments ORDER BY name')
+    departments = cursor.fetchall()
     try:
         cursor.execute(
             'UPDATE faculty SET name = ?, employee_id = ?, department_id = ?, max_hours_per_day = ?, preferred_times = ? WHERE id = ?',
@@ -985,7 +992,7 @@ def edit_faculty():
     finally:
         conn.close()
     
-    return redirect(url_for('faculty'))
+    return render_template('faculty.html', departments=departments)
 
 @app.route('/delete_faculty', methods=['POST'])
 @admin_required

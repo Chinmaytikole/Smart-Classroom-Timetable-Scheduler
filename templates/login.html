@@ -3,38 +3,155 @@
 {% block title %}Login - Intelligent Timetable System{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card shadow">
-            <div class="card-header bg-primary text-white text-center">
-                <h4><i class="fas fa-sign-in-alt"></i> Login</h4>
-            </div>
-            <div class="card-body">
-                <form method="POST">
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Username</label>
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="fas fa-user"></i></span>
-                            <input type="text" class="form-control" id="username" name="username" required>
+<div class="dashboard-container">
+    <div class="row justify-content-center" style="min-height: 80vh; align-items: center;">
+        <div class="col-md-5">
+            <div class="content-card" style="border: none; box-shadow: var(--shadow-lg);">
+                <div class="card-header text-center" style="background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan)); border: none;">
+                    <h4 class="card-title" style="margin: 0; color: white;">
+                        <i class="fas fa-sign-in-alt" style="filter: drop-shadow(0 0 5px rgba(0,0,0,0.3));"></i> Login
+                    </h4>
+                </div>
+                <div class="card-content">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <div class="input-group">
+                                <span class="input-group-text" style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-secondary);">
+                                    <i class="fas fa-user"></i>
+                                </span>
+                                <input type="text" class="form-control" id="username" name="username" required
+                                       style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                            <input type="password" class="form-control" id="password" name="password" required>
+                        
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text" style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-secondary);">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                                <input type="password" class="form-control" id="password" name="password" required
+                                       style="background: var(--bg-secondary); border-color: var(--border-color); color: var(--text-primary);">
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-sign-in-alt"></i> Login
-                        </button>
-                    </div>
-                </form>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="action-btn action-blue" style="padding: 0.75rem;">
+                                <i class="fas fa-sign-in-alt"></i> Login
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+/* Custom styles for login page */
+.dashboard-container {
+    background: 
+        radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.1) 0%, transparent 50%),
+        var(--bg-primary);
+    min-height: 100vh;
+}
+
+.content-card {
+    background: var(--bg-card);
+    border-radius: 16px;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+}
+
+.card-header {
+    padding: 2rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.card-content {
+    padding: 2rem;
+}
+
+/* Form control styling */
+.form-control, .form-select {
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--accent-blue) !important;
+    box-shadow: 0 0 0 0.2rem rgba(0, 212, 255, 0.25) !important;
+}
+
+.form-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+/* Input group styling */
+.input-group-text {
+    background: var(--bg-secondary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-secondary) !important;
+}
+
+/* Button styling */
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+    justify-content: center;
+}
+
+.action-btn:hover {
+    background: var(--accent-blue);
+    border-color: var(--accent-blue);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
+}
+
+.action-blue {
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+    border: none;
+    color: white;
+}
+
+.action-blue:hover {
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .dashboard-container {
+        padding: 1rem;
+    }
+    
+    .content-card {
+        margin: 1rem;
+    }
+    
+    .card-header {
+        padding: 1.5rem;
+    }
+    
+    .card-content {
+        padding: 1.5rem;
+    }
+}
+</style>
 {% endblock %}
