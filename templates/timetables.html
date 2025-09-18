@@ -3,23 +3,114 @@
 {% block title %}Timetables - Intelligent Timetable System{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="fas fa-table"></i> All Timetables</h1>
-    <a href="{{ url_for('generate_timetable') }}" class="btn btn-primary">
-        <i class="fas fa-plus"></i> Generate New Timetable
-    </a>
-</div>
-
-<div class="row">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="fas fa-list"></i> Generated Timetables</h5>
+<div class="dashboard-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="header-content">
+            <div>
+                <h1 class="main-title">
+                    <i class="fas fa-table title-icon"></i> All Timetables
+                </h1>
+                <p class="welcome-text">Manage and view all generated timetables</p>
             </div>
-            <div class="card-body">
+            <a href="{{ url_for('generate_timetable') }}" class="action-btn">
+                <i class="fas fa-plus"></i> Generate New Timetable
+            </a>
+        </div>
+        <div class="header-glow"></div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+        <div class="stat-card stat-primary">
+            <div class="stat-content">
+                <div class="stat-info">
+                    <div class="stat-label">Total Timetables</div>
+                    <div class="stat-value">{{ timetables|length }}</div>
+                </div>
+                <div class="stat-icon">
+                    <i class="fas fa-brain"></i>
+                </div>
+            </div>
+            <div class="stat-bar"></div>
+        </div>
+
+        <div class="stat-card stat-info">
+            <div class="stat-content">
+                <div class="stat-info">
+                    <div class="stat-label">Avg Fitness Score</div>
+                    <div class="stat-value">
+                        {% if timetables %}
+                            {% set fitness_scores = timetables|map(attribute='fitness_score')|select|list %}
+                            {% if fitness_scores %}
+                                {{ "%.1f"|format(fitness_scores|sum / fitness_scores|length) }}
+                            {% else %}
+                                0
+                            {% endif %}
+                        {% else %}
+                            0
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="stat-icon">
+                    <i class="fas fa-bolt"></i>
+                </div>
+            </div>
+            <div class="stat-bar"></div>
+        </div>
+
+        <div class="stat-card stat-success">
+            <div class="stat-content">
+                <div class="stat-info">
+                    <div class="stat-label">Success Rate</div>
+                    <div class="stat-value">
+                        {% if timetables %}
+                            {{ ((timetables|selectattr('fitness_score')|list|length / timetables|length) * 100)|int }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="stat-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+            </div>
+            <div class="stat-bar"></div>
+        </div>
+
+        <div class="stat-card stat-warning">
+            <div class="stat-content">
+                <div class="stat-info">
+                    <div class="stat-label">Avg Generation Time</div>
+                    <div class="stat-value">
+                        {% if timetables and timetables|length > 0 %}
+                            {{ (9 / timetables|length)|round(1) }} min
+                        {% else %}
+                            0s
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="stat-icon">
+                    <i class="fas fa-tachometer-alt"></i>
+                </div>
+            </div>
+            <div class="stat-bar"></div>
+        </div>
+    </div>
+
+    <!-- Content Grid -->
+    <div class="content-grid">
+        <!-- Main Content -->
+        <div class="content-card">
+            <div class="card-header">
+                <h5 class="card-title">
+                    <i class="fas fa-list card-icon"></i> Generated Timetables
+                </h5>
+            </div>
+            <div class="card-content">
                 {% if timetables %}
-                <div class="table-responsive">
-                    <table class="table table-striped table-hover">
+                <div class="table-container">
+                    <table class="modern-table">
                         <thead>
                             <tr>
                                 <th>Name</th>
@@ -33,36 +124,38 @@
                         </thead>
                         <tbody>
                             {% for timetable in timetables %}
-                            <tr>
-                                <td class="fw-bold">{{ timetable.name }}</td>
-                                <td>{{ timetable.department_name or 'N/A' }}</td>
-                                <td>
+                            <tr class="table-row">
+                                <td class="table-cell fw-bold">{{ timetable.name }}</td>
+                                <td class="table-cell">{{ timetable.department_name or 'N/A' }}</td>
+                                <td class="table-cell">
                                     <span class="badge bg-info">Semester {{ timetable.semester }}</span>
                                 </td>
-                                <td>
+                                <td class="table-cell">
                                     {% if timetable.fitness_score %}
-                                    <span class="badge bg-{{ 'success' if timetable.fitness_score > 800 else 'warning' if timetable.fitness_score > 600 else 'danger' }}">
+                                    <span class="fitness-badge fitness-{{ 'high' if timetable.fitness_score > 800 else 'medium' if timetable.fitness_score > 600 else 'low' }}">
                                         {{ "%.1f"|format(timetable.fitness_score) }}
                                     </span>
                                     {% else %}
                                     <span class="badge bg-secondary">Not calculated</span>
                                     {% endif %}
                                 </td>
-                                <td>{{ timetable.generated_by_name or 'System' }}</td>
-                                <td>{{ timetable.created_at[:10] }}</td>
-                                <td>
-                                    <a href="{{ url_for('view_timetable', timetable_id=timetable.id) }}" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-eye"></i> View
-                                    </a>
-                                    <button class="btn btn-sm btn-outline-success">
-                                        <i class="fas fa-download"></i> Export
-                                    </button>
-                                    {% if session.role == 'admin' %}
-                                    <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteTimetableModal" 
-                                            data-timetable-id="{{ timetable.id }}" data-timetable-name="{{ timetable.name }}">
-                                        <i class="fas fa-trash"></i> Delete
-                                    </button>
-                                    {% endif %}
+                                <td class="table-cell">{{ timetable.generated_by_name or 'System' }}</td>
+                                <td class="table-cell">{{ timetable.created_at[:10] }}</td>
+                                <td class="table-cell">
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <a href="{{ url_for('view_timetable', timetable_id=timetable.id) }}" class="action-btn action-blue">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                        <button class="action-btn action-cyan">
+                                            <i class="fas fa-download"></i> Export
+                                        </button>
+                                        {% if session.role == 'admin' %}
+                                        <button class="action-btn action-primary" data-bs-toggle="modal" data-bs-target="#deleteTimetableModal" 
+                                                data-timetable-id="{{ timetable.id }}" data-timetable-name="{{ timetable.name }}">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                        {% endif %}
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -70,322 +163,253 @@
                     </table>
                 </div>
                 {% else %}
-                <div class="alert alert-info text-center">
-                    <i class="fas fa-info-circle fa-2x mb-3"></i>
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <i class="fas fa-info-circle"></i>
+                    </div>
                     <h4>No Timetables Generated Yet</h4>
                     <p>Get started by generating your first timetable using our intelligent genetic algorithm system.</p>
-                    <a href="{{ url_for('generate_timetable') }}" class="btn btn-primary btn-lg">
+                    <a href="{{ url_for('generate_timetable') }}" class="action-btn action-green" style="margin-top: 1rem;">
                         <i class="fas fa-cog"></i> Generate First Timetable
                     </a>
                 </div>
                 {% endif %}
             </div>
         </div>
-    </div>
-</div>
 
-<!-- Genetic Algorithm Stats Section -->
-<div class="row mt-4">
-    <div class="col-md-12">
-        <div class="card">
+        <!-- Sidebar Actions -->
+        <div class="content-card">
             <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-chart-line"></i> System Performance</h5>
+                <h5 class="card-title">
+                    <i class="fas fa-rocket card-icon"></i> Quick Actions
+                </h5>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3 text-center">
-                        <div class="card bg-light mb-3">
-                            <div class="card-body">
-                                <div class="dashboard-icon">
-                                    <i class="fas fa-brain"></i>
-                                </div>
-                                <div class="stats-number">{{ timetables|length }}</div>
-                                <div class="stats-text">Total Timetables</div>
-                            </div>
+            <div class="card-content">
+                <div class="actions-grid">
+                    <a href="{{ url_for('generate_timetable') }}" class="action-item action-green">
+                        <div class="action-icon">
+                            <i class="fas fa-cog"></i>
                         </div>
-                    </div>
-                    <div class="col-md-3 text-center">
-                        <div class="card bg-light mb-3">
-                            <div class="card-body">
-                                <div class="dashboard-icon">
-                                    <i class="fas fa-bolt"></i>
-                                </div>
-                                {% if timetables %}
-                                {% set fitness_scores = timetables|map(attribute='fitness_score')|select|list %}
-                                <div class="stats-number">
-                                    {% if fitness_scores %}
-                                        {{ "%.1f"|format(fitness_scores|sum / fitness_scores|length) }}
-                                    {% else %}
-                                        0
-                                    {% endif %}
-                                </div>
-                                {% else %}
-                                <div class="stats-number">0</div>
-                                {% endif %}
-                                <div class="stats-text">Avg Fitness Score</div>
-                            </div>
+                        <div class="action-text">Generate New Timetable</div>
+                        <div class="action-arrow">
+                            <i class="fas fa-chevron-right"></i>
                         </div>
-                    </div>
-                    <div class="col-md-3 text-center">
-                        <div class="card bg-light mb-3">
-                            <div class="card-body">
-                                <div class="dashboard-icon">
-                                    <i class="fas fa-clock"></i>
-                                </div>
-                                <div class="stats-number">
-                                    {% if timetables %}
-                                        {{ ((timetables|selectattr('fitness_score')|list|length / timetables|length) * 100)|int }}%
-                                    {% else %}
-                                        0%
-                                    {% endif %}
-                                </div>
-                                <div class="stats-text">Success Rate</div>
-                            </div>
+                    </a>
+                    
+                    <a href="#" class="action-item action-blue">
+                        <div class="action-icon">
+                            <i class="fas fa-history"></i>
                         </div>
-                    </div>
-                    <div class="col-md-3 text-center">
-                        <div class="card bg-light mb-3">
-                            <div class="card-body">
-                                <div class="dashboard-icon">
-                                    <i class="fas fa-tachometer-alt"></i>
-                                </div>
-                                <div class="stats-number">
-                                    {% if timetables and timetables|length > 0 %}
-                                        {{ (9 / timetables|length)|round(1) }} min
-                                    {% else %}
-                                        0s
-                                    {% endif %}
-                                </div>
-                                <div class="stats-text">Avg Generation Time</div>
-                            </div>
+                        <div class="action-text">View Generation History</div>
+                        <div class="action-arrow">
+                            <i class="fas fa-chevron-right"></i>
                         </div>
-                    </div>
-                </div>
-                
-                <div class="row mt-4">
-                    <div class="col-md-6">
-                        <h6>Algorithm Efficiency</h6>
-                        {% if timetables %}
-                        {% set high_fitness = timetables|selectattr('fitness_score', '>=', 700)|list|length %}
-                        <div class="progress mb-2">
-                            <div class="progress-bar bg-success" role="progressbar" 
-                                 style="width: {{ (high_fitness / timetables|length * 100)|int }}%" 
-                                 aria-valuenow="{{ (high_fitness / timetables|length * 100)|int }}" 
-                                 aria-valuemin="0" aria-valuemax="100"></div>
+                    </a>
+                    
+                    <a href="#" class="action-item action-purple">
+                        <div class="action-icon">
+                            <i class="fas fa-chart-line"></i>
                         </div>
-                        <small>{{ (high_fitness / timetables|length * 100)|int }}% - Constraint Satisfaction Rate</small>
-                        {% else %}
-                        <div class="progress mb-2">
-                            <div class="progress-bar bg-success" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        <div class="action-text">Performance Analytics</div>
+                        <div class="action-arrow">
+                            <i class="fas fa-chevron-right"></i>
                         </div>
-                        <small>0% - Constraint Satisfaction Rate</small>
-                        {% endif %}
-                    </div>
-                    <div class="col-md-6">
-                        <h6>Resource Utilization</h6>
-                        {% if timetables %}
-                        {% set medium_fitness = timetables|selectattr('fitness_score', '>=', 500)|selectattr('fitness_score', '<', 700)|list|length %}
-                        <div class="progress mb-2">
-                            <div class="progress-bar bg-info" role="progressbar" 
-                                 style="width: {{ ((medium_fitness + high_fitness) / timetables|length * 100)|int }}%" 
-                                 aria-valuenow="{{ ((medium_fitness + high_fitness) / timetables|length * 100)|int }}" 
-                                 aria-valuemin="0" aria-valuemax="100"></div>
+                    </a>
+                    
+                    <a href="#" class="action-item action-cyan">
+                        <div class="action-icon">
+                            <i class="fas fa-sliders-h"></i>
                         </div>
-                        <small>{{ ((medium_fitness + high_fitness) / timetables|length * 100)|int }}% - Optimal Resource Usage</small>
-                        {% else %}
-                        <div class="progress mb-2">
-                            <div class="progress-bar bg-info" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        <div class="action-text">Algorithm Settings</div>
+                        <div class="action-arrow">
+                            <i class="fas fa-chevron-right"></i>
                         </div>
-                        <small>0% - Optimal Resource Usage</small>
-                        {% endif %}
-                    </div>
+                    </a>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Sample Timetable Preview -->
-<div class="row mt-4">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-eye"></i> Sample Timetable Preview</h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th class="timetable-header">Time/Day</th>
-                                <th class="timetable-header">Monday</th>
-                                <th class="timetable-header">Tuesday</th>
-                                <th class="timetable-header">Wednesday</th>
-                                <th class="timetable-header">Thursday</th>
-                                <th class="timetable-header">Friday</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td class="timetable-header">9:00-10:00</td>
-                                <td class="timetable-cell">
-                                    <div class="timetable-class">
-                                        <div class="class-slot">Room: A-101</div>
-                                        Data Structures - Prof. Smith
-                                    </div>
-                                </td>
-                                <td class="timetable-cell">
-                                    <div class="timetable-class">
-                                        <div class="class-slot">Room: A-102</div>
-                                        Algorithms - Prof. Johnson
-                                    </div>
-                                </td>
-                                <td class="timetable-cell">
-                                    <div class="timetable-class lab">
-                                        <div class="class-slot">Lab: L-201</div>
-                                        Programming Lab - Prof. Williams
-                                    </div>
-                                </td>
-                                <td class="timetable-cell">
-                                    <div class="timetable-class">
-                                        <div class="class-slot">Room: A-103</div>
-                                        Database Systems - Prof. Brown
-                                    </div>
-                                </td>
-                                <td class="timetable-cell">
-                                    <div class="timetable-class">
-                                        <div class="class-slot">Room: A-104</div>
-                                        Computer Networks - Prof. Davis
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="timetable-header">10:00-11:00</td>
-                                <td class="timetable-cell">
-                                    <div class="timetable-class">
-                                        <div class="class-slot">Room: A-102</div>
-                                        Algorithms - Prof. Johnson
-                                    </div>
-                                </td>
-                                <td class="timetable-cell">
-                                    <div class="timetable-class lab">
-                                        <div class="class-slot">Lab: L-202</div>
-                                        DBMS Lab - Prof. Brown
-                                    </div>
-                                </td>
-                                <td class="timetable-cell">
-                                    <div class="timetable-class">
-                                        <div class="class-slot">Room: A-101</div>
-                                        Data Structures - Prof. Smith
-                                    </div>
-                                </td>
-                                <td class="timetable-cell">
-                                    <div class="timetable-class">
-                                        <div class="class-slot">Room: A-105</div>
-                                        Web Technologies - Prof. Wilson
-                                    </div>
-                                </td>
-                                <td class="timetable-cell">
-                                    <div class="timetable-class lab">
-                                        <div class="class-slot">Lab: L-201</div>
-                                        Networking Lab - Prof. Davis
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="timetable-header">12:00-1:00</td>
-                                <td class="timetable-cell" colspan="5" style="text-align: center; background-color: #fff4e6;">
-                                    <strong>Lunch Break</strong>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+    <!-- Sample Timetable Preview -->
+    <div class="content-card" style="margin-top: 2rem;">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-eye card-icon"></i> Sample Timetable Preview
+            </h5>
+        </div>
+        <div class="card-content">
+            <div class="table-container">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>Time/Day</th>
+                            <th>Monday</th>
+                            <th>Tuesday</th>
+                            <th>Wednesday</th>
+                            <th>Thursday</th>
+                            <th>Friday</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="table-row">
+                            <td class="table-cell">9:00-10:00</td>
+                            <td class="table-cell">
+                                <div class="timetable-class">
+                                    <div class="class-slot">Room: A-101</div>
+                                    Data Structures - Prof. Smith
+                                </div>
+                            </td>
+                            <td class="table-cell">
+                                <div class="timetable-class">
+                                    <div class="class-slot">Room: A-102</div>
+                                    Algorithms - Prof. Johnson
+                                </div>
+                            </td>
+                            <td class="table-cell">
+                                <div class="timetable-class lab">
+                                    <div class="class-slot">Lab: L-201</div>
+                                    Programming Lab - Prof. Williams
+                                </div>
+                            </td>
+                            <td class="table-cell">
+                                <div class="timetable-class">
+                                    <div class="class-slot">Room: A-103</div>
+                                    Database Systems - Prof. Brown
+                                </div>
+                            </td>
+                            <td class="table-cell">
+                                <div class="timetable-class">
+                                    <div class="class-slot">Room: A-104</div>
+                                    Computer Networks - Prof. Davis
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="table-row">
+                            <td class="table-cell">10:00-11:00</td>
+                            <td class="table-cell">
+                                <div class="timetable-class">
+                                    <div class="class-slot">Room: A-102</div>
+                                    Algorithms - Prof. Johnson
+                                </div>
+                            </td>
+                            <td class="table-cell">
+                                <div class="timetable-class lab">
+                                    <div class="class-slot">Lab: L-202</div>
+                                    DBMS Lab - Prof. Brown
+                                </div>
+                            </td>
+                            <td class="table-cell">
+                                <div class="timetable-class">
+                                    <div class="class-slot">Room: A-101</div>
+                                    Data Structures - Prof. Smith
+                                </div>
+                            </td>
+                            <td class="table-cell">
+                                <div class="timetable-class">
+                                    <div class="class-slot">Room: A-105</div>
+                                    Web Technologies - Prof. Wilson
+                                </div>
+                            </td>
+                            <td class="table-cell">
+                                <div class="timetable-class lab">
+                                    <div class="class-slot">Lab: L-201</div>
+                                    Networking Lab - Prof. Davis
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="table-row">
+                            <td class="table-cell" colspan="6" style="text-align: center; background-color: var(--bg-tertiary);">
+                                <strong>Lunch Break</strong>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
-
-<style>
-.timetable-header {
-    background-color: var(--light);
-    font-weight: 600;
-    text-align: center;
-    padding: 10px;
-}
-
-.timetable-cell {
-    border: 1px solid #dee2e6;
-    padding: 8px;
-    height: 80px;
-    position: relative;
-}
-
-.timetable-class {
-    background-color: #e9f7ff;
-    border-left: 4px solid var(--info);
-    padding: 5px;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    margin-bottom: 2px;
-    cursor: pointer;
-}
-
-.timetable-class.lab {
-    background-color: #fff4e6;
-    border-left: 4px solid var(--warning);
-}
-
-.class-slot {
-    font-size: 0.7rem;
-    color: var(--secondary);
-}
-
-.dashboard-icon {
-    font-size: 2.5rem;
-    color: var(--primary);
-    margin-bottom: 10px;
-}
-
-.stats-number {
-    font-size: 2rem;
-    font-weight: 700;
-}
-
-.stats-text {
-    color: var(--secondary);
-    font-weight: 500;
-}
-
-.progress {
-    height: 8px;
-}
-</style>
 
 <!-- Delete Timetable Modal -->
 <div class="modal fade" id="deleteTimetableModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
+        <div class="modal-content" style="background: var(--bg-card); color: var(--text-primary);">
+            <div class="modal-header" style="background: var(--accent-red); color: white;">
                 <h5 class="modal-title"><i class="fas fa-trash"></i> Delete Timetable</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="deleteTimetableForm" method="POST">
                 <div class="modal-body">
                     <p>Are you sure you want to delete the timetable <strong id="deleteTimetableName"></strong>?</p>
-                    <p class="text-danger">
+                    <p style="color: var(--accent-red);">
                         <i class="fas fa-exclamation-triangle"></i>
                         This action cannot be undone. All associated timetable slots will be permanently deleted.
                     </p>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger">Delete Timetable</button>
+                <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                    <button type="button" class="action-btn" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="action-btn action-primary">Delete Timetable</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<style>
+.timetable-class {
+    background-color: var(--bg-secondary);
+    border-left: 4px solid var(--accent-blue);
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    margin-bottom: 5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.timetable-class:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.timetable-class.lab {
+    background-color: var(--bg-tertiary);
+    border-left: 4px solid var(--accent-orange);
+}
+
+.class-slot {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-bottom: 3px;
+}
+
+/* Override Bootstrap badge styles to match our theme */
+.badge.bg-info {
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan)) !important;
+    color: white !important;
+}
+
+.badge.bg-secondary {
+    background: var(--bg-tertiary) !important;
+    color: var(--text-secondary) !important;
+}
+
+/* Ensure table cells have proper spacing */
+.modern-table .table-cell {
+    vertical-align: top;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .action-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+    }
+    
+    .actions-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
 
 {% endblock %}
 
@@ -394,10 +418,10 @@
 // Add some interactive features
 document.addEventListener('DOMContentLoaded', function() {
     // Add hover effects to timetable rows
-    const timetableRows = document.querySelectorAll('tbody tr');
+    const timetableRows = document.querySelectorAll('.table-row');
     timetableRows.forEach(row => {
         row.addEventListener('mouseenter', function() {
-            this.style.backgroundColor = '#f8f9fa';
+            this.style.backgroundColor = 'var(--bg-hover)';
         });
         row.addEventListener('mouseleave', function() {
             this.style.backgroundColor = '';
@@ -419,6 +443,12 @@ document.addEventListener('DOMContentLoaded', function() {
             form.action = "{{ url_for('delete_timetable', timetable_id=0) }}".replace('0', timetableId);
         });
     }
+    
+    // Add animation to stat cards
+    const statCards = document.querySelectorAll('.stat-card');
+    statCards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.1}s`;
+    });
 });
 </script>
 {% endblock %}
