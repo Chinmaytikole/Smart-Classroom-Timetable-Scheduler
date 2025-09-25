@@ -30,7 +30,7 @@
             </div>
             <div class="header-glow"></div>
         </div>
-        
+
         <!-- QR Scanner Modal -->
         <div class="modal fade" id="qrScannerModal" tabindex="-1" aria-labelledby="qrScannerModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg">
@@ -103,14 +103,13 @@
             </div>
         </div>
 
-      <!-- Stats Grid -->
+        <!-- Stats Grid -->
         <div class="stats-grid">
             <div class="stat-card stat-primary">
                 <div class="stat-content">
                     <div class="stat-info">
                         <div class="stat-label">Attendance</div>
-                        <div class="stat-value">{{ 75 }}%</div>
-                        <!-- attendance_summary.attendance_percentage if attendance_summary else 75 -->
+                        <div class="stat-value">{{ attendance_summary.attendance_percentage if attendance_summary else 0 }}%</div>
                     </div>
                     <div class="stat-icon">
                         <i class="fas fa-calendar-check"></i>
@@ -123,8 +122,7 @@
                 <div class="stat-content">
                     <div class="stat-info">
                         <div class="stat-label">Present Days</div>
-                        <div class="stat-value">{{  75 }}</div><!-- attendance_summary.present_classes if attendance_summary else 75 -->
-                        
+                        <div class="stat-value">{{ attendance_summary.present_classes if attendance_summary else 0 }}</div>
                     </div>
                     <div class="stat-icon">
                         <i class="fas fa-chart-line"></i>
@@ -136,11 +134,11 @@
             <div class="stat-card stat-info">
                 <div class="stat-content">
                     <div class="stat-info">
-                        <div class="stat-label">Upcoming Events</div>
-                        <div class="stat-value">{{ upcoming_events|length if upcoming_events else 0 }}</div>
+                        <div class="stat-label">Upcoming Exams</div>
+                        <div class="stat-value">{{ upcoming_exams|length }}</div>
                     </div>
                     <div class="stat-icon">
-                        <i class="fas fa-calendar-day"></i>
+                        <i class="fas fa-book"></i>
                     </div>
                 </div>
                 <div class="stat-bar"></div>
@@ -149,8 +147,8 @@
             <div class="stat-card stat-warning">
                 <div class="stat-content">
                     <div class="stat-info">
-                        <div class="stat-label">Pending Tasks</div>
-                        <div class="stat-value">{{ pending_task}}</div>
+                        <div class="stat-label">Recent Results</div>
+                        <div class="stat-value">{{ recent_marks|length }}</div>
                     </div>
                     <div class="stat-icon">
                         <i class="fas fa-tasks"></i>
@@ -170,11 +168,7 @@
                         <h2 class="card-title">
                             <span class="card-icon">📅</span>
                             Today's Schedule & Attendance
-                            <span class="badge bg-primary ms-2">{{ today_attendance|length if today_attendance else 0 }} Classes</span>
                         </h2>
-                        <div class="card-actions">
-                            <span class="date-display">{{ current_date }}</span>
-                        </div>
                     </div>
                     <div class="card-content">
                         {% if today_attendance %}
@@ -187,70 +181,25 @@
                                         <th>Faculty</th>
                                         <th>Status</th>
                                         <th>Room</th>
-                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for att in today_attendance %}
-                                    <tr class="table-row {% if att.status == 'PRESENT' %}present-row{% elif att.status == 'ABSENT' %}absent-row{% else %}pending-row{% endif %}">
-                                        <td class="table-cell fw-bold">
-                                            <i class="fas fa-clock me-1 text-muted"></i>{{ att.time_slot }}
-                                        </td>
-                                        <td class="table-cell">
-                                            <div class="subject-info">
-                                                <div class="subject-name">{{ att.subject_name }}</div>
-                                                {% if att.subject_code %}
-                                                <small class="text-muted">{{ att.subject_code }}</small>
-                                                {% endif %}
-                                            </div>
-                                        </td>
+                                    <tr class="table-row">
+                                        <td class="table-cell fw-bold">{{ att.time_slot }}</td>
+                                        <td class="table-cell">{{ att.subject_name }}</td>
                                         <td class="table-cell">{{ att.faculty_name if att.faculty_name else 'N/A' }}</td>
                                         <td class="table-cell">
                                             <span class="badge bg-{{ 'success' if att.status == 'PRESENT' else 'danger' if att.status == 'ABSENT' else 'warning' }} badge-custom">
                                                 <i class="fas fa-{{ 'check' if att.status == 'PRESENT' else 'times' if att.status == 'ABSENT' else 'clock' }} me-1"></i>
                                                 {{ att.status }}
                                             </span>
-                                            {% if att.attendance_time and att.status == 'PRESENT' %}
-                                            <br><small class="text-muted">{{ att.attendance_time.split(' ')[1] if ' ' in att.attendance_time else att.attendance_time }}</small>
-                                            {% endif %}
                                         </td>
-                                        <td class="table-cell">
-                                            <i class="fas fa-door-open me-1 text-muted"></i>
-                                            {{ att.classroom_name if att.classroom_name else 'N/A' }}
-                                        </td>
-                                        <td class="table-cell">
-                                            {% if att.status == 'PENDING' %}
-                                            <button class="btn btn-sm btn-outline-primary mark-attendance-btn" 
-                                                    data-slot-id="{{ att.slot_id }}" 
-                                                    data-subject="{{ att.subject_name }}">
-                                                <i class="fas fa-check me-1"></i>Mark
-                                            </button>
-                                            {% else %}
-                                            <span class="text-muted">Completed</span>
-                                            {% endif %}
-                                        </td>
+                                        <td class="table-cell">{{ att.classroom_name if att.classroom_name else 'N/A' }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
-                        </div>
-                        
-                        <!-- Today's Summary -->
-                        <div class="attendance-summary mt-4 p-3 bg-light rounded">
-                            <div class="row text-center">
-                                <div class="col-4">
-                                    <div class="fw-bold text-success fs-4">{{ today_attendance|selectattr('status', 'equalto', 'PRESENT')|list|length }}</div>
-                                    <small class="text-muted">Present</small>
-                                </div>
-                                <div class="col-4">
-                                    <div class="fw-bold text-warning fs-4">{{ today_attendance|selectattr('status', 'equalto', 'PENDING')|list|length }}</div>
-                                    <small class="text-muted">Pending</small>
-                                </div>
-                                <div class="col-4">
-                                    <div class="fw-bold text-danger fs-4">{{ today_attendance|selectattr('status', 'equalto', 'ABSENT')|list|length }}</div>
-                                    <small class="text-muted">Absent</small>
-                                </div>
-                            </div>
                         </div>
                         {% else %}
                         <div class="empty-state">
@@ -313,83 +262,6 @@
 
             <!-- Right Column -->
             <div>
-                <!-- Upcoming Events & Announcements -->
-                <div class="content-card">
-                    <div class="card-header">
-                        <h2 class="card-title">
-                            <span class="card-icon">📢</span>
-                            Upcoming Events & Announcements
-                        </h2>
-                    </div>
-                    <div class="card-content">
-                        {% if upcoming_events %}
-                        <div class="events-list">
-                            {% for event in upcoming_events %}
-                            <div class="event-item {% if event.priority == 'high' %}event-high-priority{% elif event.priority == 'medium' %}event-medium-priority{% else %}event-low-priority{% endif %}">
-                                <div class="event-icon">
-                                    {% if event.type == 'exam' %}
-                                    <i class="fas fa-file-alt text-danger"></i>
-                                    {% elif event.type == 'holiday' %}
-                                    <i class="fas fa-umbrella-beach text-success"></i>
-                                    {% elif event.type == 'deadline' %}
-                                    <i class="fas fa-flag text-warning"></i>
-                                    {% else %}
-                                    <i class="fas fa-calendar text-primary"></i>
-                                    {% endif %}
-                                </div>
-                                <div class="event-details">
-                                    <div class="event-title">{{ event.title }}</div>
-                                    <div class="event-meta">
-                                        <span class="event-date">
-                                            <i class="fas fa-clock me-1"></i>{{ event.date }}
-                                            {% if event.time %}{{ event.time }}{% endif %}
-                                        </span>
-                                        {% if event.location %}
-                                        <span class="event-location">
-                                            <i class="fas fa-map-marker-alt me-1"></i>{{ event.location }}
-                                        </span>
-                                        {% endif %}
-                                    </div>
-                                    {% if event.description %}
-                                    <div class="event-description">{{ event.description }}</div>
-                                    {% endif %}
-                                </div>
-                                <div class="event-actions">
-                                    {% if event.type == 'exam' %}
-                                    <span class="badge bg-danger">Exam</span>
-                                    {% elif event.type == 'assignment' %}
-                                    <span class="badge bg-warning">Assignment</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        <div class="empty-state">
-                            <div class="empty-icon">📢</div>
-                            <h3>No Upcoming Events</h3>
-                            <p>Events and announcements will appear here</p>
-                        </div>
-                        {% endif %}
-                        
-                        <!-- Quick Actions -->
-                        <div class="quick-actions mt-3">
-                            <h6 class="mb-2">Quick Actions</h6>
-                            <div class="d-grid gap-2">
-                                <button class="btn btn-outline-primary btn-sm">
-                                    <i class="fas fa-download me-1"></i>Download Timetable
-                                </button>
-                                <button class="btn btn-outline-success btn-sm">
-                                    <i class="fas fa-calendar-plus me-1"></i>Add Personal Event
-                                </button>
-                                <button class="btn btn-outline-info btn-sm">
-                                    <i class="fas fa-question-circle me-1"></i>Request Leave
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Attendance Summary -->
                 <div class="content-card">
                     <div class="card-header">
@@ -402,8 +274,7 @@
                         {% if attendance_summary %}
                         <div class="text-center mb-4">
                             <div class="display-4 fw-bold text-primary">
-                                {{ 75  }}%
-                                <!-- attendance_summary.attendance_percentage -->
+                                {{ attendance_summary.attendance_percentage }}%
                             </div>
                             <p class="text-muted">Overall Attendance</p>
                         </div>
@@ -424,25 +295,55 @@
                                 <small class="text-muted">Absent</small>
                             </div>
                         </div>
-                        
-                        <!-- Monthly Trend -->
-                        <div class="mt-4">
-                            <h6 class="mb-2">This Month's Trend</h6>
-                            <div class="attendance-trend">
-                                {% for day in monthly_trend %}
-                                <div class="trend-day" title="{{ day.date }}: {{ day.percentage }}%">
-                                    <div class="trend-bar {% if day.percentage >= 80 %}trend-good{% elif day.percentage >= 60 %}trend-average{% else %}trend-poor{% endif %}"
-                                         style="height: {{ day.percentage }}%"></div>
-                                    <small>{{ day.day }}</small>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
                         {% else %}
                         <div class="empty-state">
                             <div class="empty-icon">📊</div>
                             <h3>No Data Available</h3>
                             <p>Attendance data will appear here once available</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Upcoming Exams -->
+                <div class="content-card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <span class="card-icon">📚</span>
+                            Upcoming Exams
+                        </h2>
+                    </div>
+                    <div class="card-content">
+                        {% if upcoming_exams %}
+                        <div class="list-group">
+                            {% for exam in upcoming_exams %}
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="fw-bold mb-1">{{ exam.subject_name }}</h6>
+                                        <small class="text-muted">{{ exam.exam_type }}</small>
+                                    </div>
+                                    <span class="badge bg-warning text-dark badge-custom">
+                                        {{ exam.exam_date }}
+                                    </span>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock me-1"></i>{{ exam.start_time }} - {{ exam.end_time }}
+                                    </small>
+                                    <br>
+                                    <small class="text-muted">
+                                        <i class="fas fa-door-open me-1"></i>{{ exam.classroom_name }}
+                                    </small>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <div class="empty-icon">📅</div>
+                            <h3>No Upcoming Exams</h3>
+                            <p>You're all caught up!</p>
                         </div>
                         {% endif %}
                     </div>
@@ -512,154 +413,395 @@
         </div>
     </div>
 
+    <!-- Floating Chatbot Widget -->
+    <div class="chatbot-widget">
+        <button id="chatbot-toggle" class="chatbot-button" title="Ask Sahayak">
+            <i class="fas fa-robot"></i>
+            <span class="chatbot-text">Sahayak</span>
+        </button>
+        
+        <!-- Embedded Chat Window -->
+        <div id="chatbot-window" class="chatbot-window" style="display: none;">
+            <div class="chatbot-header">
+                <div class="chatbot-header-info">
+                    <div class="chatbot-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0">Sahayak Chatbot</h6>
+                        <small id="chatbot-status" class="text-muted">
+                            <span class="status-dot"></span>
+                            Initializing...
+                        </small>
+                    </div>
+                </div>
+                <button id="chatbot-minimize" class="btn-minimize" title="Minimize">
+                    <i class="fas fa-minus"></i>
+                </button>
+            </div>
+            
+            <div id="chatbot-messages" class="chatbot-messages">
+                <div class="message bot-message">
+                    <div class="message-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="message-content">
+                        <div class="message-bubble">
+                            Hello! I am your Sahayak. Please wait while I get ready...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chatbot-input">
+                <form id="chatbot-form">
+                    <div class="input-group">
+                        <input type="text" id="chatbot-input" class="form-control" 
+                               placeholder="Loading..." disabled autocomplete="off">
+                        <button type="submit" id="chatbot-send" class="btn btn-primary" disabled>
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chatbot Widget Styles -->
     <style>
+        .chatbot-widget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .chatbot-button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            color: var(--bg-primary);
+            border: none;
+            border-radius: 50px;
+            box-shadow: var(--shadow-lg);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            font-size: 0.9rem;
+            min-width: 120px;
+            justify-content: center;
+        }
+
+        .chatbot-button:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 8px 30px rgba(0, 212, 255, 0.4);
+        }
+
+        .chatbot-button:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .chatbot-button i {
+            font-size: 1.2rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .chatbot-text {
+            font-weight: 700;
+        }
+
+        /* Chat Window Styles */
+        .chatbot-window {
+            position: absolute;
+            bottom: 80px;
+            right: 0;
+            width: 380px;
+            height: 500px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            flex-direction: column;
+            animation: slideUp 0.3s ease-out;
+            overflow: hidden;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chatbot-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            color: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .chatbot-header-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chatbot-avatar {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .btn-minimize {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: var(--bg-primary);
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .btn-minimize:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #ef4444;
+            border-radius: 50%;
+            margin-right: 6px;
+            animation: blink 1s infinite;
+        }
+
+        .status-dot.online {
+            background: #22c55e;
+            animation: none;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        .chatbot-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .chatbot-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chatbot-messages::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        .chatbot-messages::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        .message {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .message.user-message {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .bot-message .message-avatar {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            color: var(--bg-primary);
+        }
+
+        .user-message .message-avatar {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .message-content {
+            flex: 1;
+            max-width: 80%;
+        }
+
+        .message-bubble {
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+
+        .bot-message .message-bubble {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-bottom-left-radius: 6px;
+        }
+
+        .user-message .message-bubble {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            color: var(--bg-primary);
+            border-bottom-right-radius: 6px;
+        }
+
+        .chatbot-input {
+            padding: 16px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .chatbot-input .form-control {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 25px;
+            padding: 12px 20px;
+        }
+
+        .chatbot-input .form-control:focus {
+            background: var(--bg-primary);
+            border-color: var(--accent-cyan);
+            color: var(--text-primary);
+            box-shadow: 0 0 0 0.2rem rgba(0, 212, 255, 0.25);
+        }
+
+        .chatbot-input .btn {
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            border: none;
+        }
+
+        .chatbot-input .btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* Typing indicator */
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .typing-dots span {
+            width: 8px;
+            height: 8px;
+            background: var(--text-secondary);
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 80%, 100% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+            40% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .chatbot-widget {
+                bottom: 15px;
+                right: 15px;
+            }
+            
+            .chatbot-button {
+                padding: 10px 16px;
+                min-width: 100px;
+                font-size: 0.8rem;
+            }
+            
+            .chatbot-text {
+                display: none;
+            }
+            
+            .chatbot-button {
+                min-width: 50px;
+                border-radius: 50%;
+                aspect-ratio: 1;
+            }
+            
+            .chatbot-window {
+                width: calc(100vw - 30px);
+                height: 400px;
+                right: -15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .chatbot-window {
+                bottom: 70px;
+                height: 350px;
+            }
+        }
+
         .header-actions {
             display: flex;
             align-items: center;
             margin-left: auto;
         }
         
-        /* Enhanced Today's Schedule Styles */
-        .present-row {
-            border-left: 4px solid #28a745;
-            background-color: rgba(40, 167, 69, 0.05);
-        }
-        
-        .absent-row {
-            border-left: 4px solid #dc3545;
-            background-color: rgba(220, 53, 69, 0.05);
-        }
-        
-        .pending-row {
-            border-left: 4px solid #ffc107;
-            background-color: rgba(255, 193, 7, 0.05);
-        }
-        
-        .subject-info {
-            line-height: 1.2;
-        }
-        
-        .subject-name {
-            font-weight: 600;
-        }
-        
-        .attendance-summary {
-            border: 1px solid #dee2e6;
-        }
-        
-        /* Events Styles */
-        .events-list {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        
-        .event-item {
-            display: flex;
-            align-items: flex-start;
-            padding: 12px;
-            border-left: 4px solid #6c757d;
-            margin-bottom: 10px;
-            background: #f8f9fa;
-            border-radius: 4px;
-        }
-        
-        .event-high-priority {
-            border-left-color: #dc3545;
-            background: rgba(220, 53, 69, 0.05);
-        }
-        
-        .event-medium-priority {
-            border-left-color: #ffc107;
-            background: rgba(255, 193, 7, 0.05);
-        }
-        
-        .event-low-priority {
-            border-left-color: #28a745;
-            background: rgba(40, 167, 69, 0.05);
-        }
-        
-        .event-icon {
-            font-size: 1.2rem;
-            margin-right: 12px;
-            margin-top: 2px;
-        }
-        
-        .event-details {
-            flex: 1;
-        }
-        
-        .event-title {
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-        
-        .event-meta {
-            font-size: 0.85rem;
-            color: #6c757d;
-            margin-bottom: 4px;
-        }
-        
-        .event-description {
-            font-size: 0.9rem;
-            color: #495057;
-        }
-        
-        .event-actions {
-            margin-left: 10px;
-        }
-        
-        .quick-actions {
-            border-top: 1px solid #dee2e6;
-            padding-top: 15px;
-        }
-        
-        /* Attendance Trend */
-        .attendance-trend {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            height: 100px;
-            padding: 10px 0;
-        }
-        
-        .trend-day {
-            flex: 1;
-            text-align: center;
-            margin: 0 2px;
-        }
-        
-        .trend-bar {
-            width: 100%;
-            background: #28a745;
-            border-radius: 2px 2px 0 0;
-            transition: all 0.3s ease;
-        }
-        
-        .trend-good { background: #28a745; }
-        .trend-average { background: #ffc107; }
-        .trend-poor { background: #dc3545; }
-        
-        .trend-day:hover .trend-bar {
-            opacity: 0.8;
-            transform: scaleY(1.1);
-        }
-        
-        .date-display {
-            font-weight: 600;
-            color: #6c757d;
-        }
-        
-        .card-actions {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .mark-attendance-btn {
-            font-size: 0.75rem;
-            padding: 2px 8px;
-        }
-
         /* Timetable Styles */
         .timetable-container {
             background: var(--bg-card);
@@ -742,7 +884,7 @@
             opacity: 0.7;
         }
 
-        /* Responsive Design */
+        /* Responsive Design for Timetable */
         @media (max-width: 1200px) {
             .timetable-header,
             .timetable-content {
@@ -791,23 +933,13 @@
             .class-info .room-info {
                 font-size: 0.7rem;
             }
-            
-            .event-item {
-                flex-direction: column;
-            }
-            
-            .event-actions {
-                margin-left: 0;
-                margin-top: 8px;
-                align-self: flex-start;
-            }
         }
     </style>
     {% endblock %}
 
     {% block scripts %}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
+<script>
     // QR Scanner Variables
     let currentQrData = null;
     let isCameraActive = false;
@@ -1145,26 +1277,180 @@
             clearInterval(qrCheckInterval);
         }
     });
-    document.addEventListener('DOMContentLoaded', function() {
-            // Mark attendance button handlers
-            document.querySelectorAll('.mark-attendance-btn').forEach(button => {
-                button.addEventListener('click', function() {
-                    const slotId = this.dataset.slotId;
-                    const subject = this.dataset.subject;
+
+    // Chatbot widget functionality
+    let chatbotVisible = false;
+    let chatbotOnline = false;
+    
+    const chatbotToggle = document.getElementById('chatbot-toggle');
+    const chatbotWindow = document.getElementById('chatbot-window');
+    const chatbotMinimize = document.getElementById('chatbot-minimize');
+    const chatbotForm = document.getElementById('chatbot-form');
+    const chatbotInput = document.getElementById('chatbot-input');
+    const chatbotSend = document.getElementById('chatbot-send');
+    const chatbotMessages = document.getElementById('chatbot-messages');
+    const chatbotStatus = document.getElementById('chatbot-status');
+    
+    // Check chatbot status on load
+    checkChatbotStatus();
+    
+    // Toggle chatbot window
+    chatbotToggle.addEventListener('click', function() {
+        if (chatbotVisible) {
+            hideChatbot();
+        } else {
+            showChatbot();
+        }
+    });
+    
+    // Minimize chatbot
+    chatbotMinimize.addEventListener('click', function() {
+        hideChatbot();
+    });
+    
+    // Send message form
+    chatbotForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        sendMessage();
+    });
+    
+    function showChatbot() {
+        chatbotWindow.style.display = 'flex';
+        chatbotVisible = true;
+        if (!chatbotOnline) {
+            checkChatbotStatus();
+        }
+        chatbotInput.focus();
+    }
+    
+    function hideChatbot() {
+        chatbotWindow.style.display = 'none';
+        chatbotVisible = false;
+    }
+    
+    function checkChatbotStatus() {
+        fetch('/status')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'online') {
+                    chatbotOnline = true;
+                    chatbotStatus.innerHTML = '<span class="status-dot online"></span>Online';
+                    chatbotInput.placeholder = 'Type your message...';
+                    chatbotInput.disabled = false;
+                    chatbotSend.disabled = false;
                     
-                    // Show QR scanner modal for attendance marking
-                    const scanBtn = document.getElementById('scan-attendance-btn');
-                    if (scanBtn) {
-                        scanBtn.click();
-                    }
-                });
+                    // Update welcome message
+                    updateWelcomeMessage();
+                } else {
+                    chatbotOnline = false;
+                    chatbotStatus.innerHTML = '<span class="status-dot"></span>Offline';
+                    chatbotInput.placeholder = 'Chatbot is offline';
+                    chatbotInput.disabled = true;
+                    chatbotSend.disabled = true;
+                }
+            })
+            .catch(error => {
+                console.error('Error checking chatbot status:', error);
+                chatbotOnline = false;
+                chatbotStatus.innerHTML = '<span class="status-dot"></span>Error';
+                chatbotInput.placeholder = 'Connection error';
+                chatbotInput.disabled = true;
+                chatbotSend.disabled = true;
             });
-            
-            // Auto-refresh attendance data every 5 minutes
-            setInterval(() => {
-                // You can implement auto-refresh logic here
-                console.log('Auto-refreshing attendance data...');
-            }, 300000); // 5 minutes
+    }
+    
+    function updateWelcomeMessage() {
+        const welcomeMessage = chatbotMessages.querySelector('.bot-message .message-bubble');
+        if (welcomeMessage && welcomeMessage.textContent.includes('Please wait')) {
+            welcomeMessage.textContent = 'Hello! I\'m Sahayak, your classroom assistant. How can I help you today?';
+        }
+    }
+    
+    function sendMessage() {
+        const message = chatbotInput.value.trim();
+        if (!message || !chatbotOnline) return;
+        
+        // Add user message to chat
+        addMessageToChat(message, 'user');
+        chatbotInput.value = '';
+        
+        // Show typing indicator
+        showTypingIndicator();
+        
+        // Send message to server
+        fetch('/ask', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ message: message })
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideTypingIndicator();
+            if (data.response) {
+                addMessageToChat(data.response, 'bot');
+            } else {
+                addMessageToChat('Sorry, I didn\'t understand that. Can you please rephrase your question?', 'bot');
+            }
+        })
+        .catch(error => {
+            hideTypingIndicator();
+            console.error('Error sending message:', error);
+            addMessageToChat('Sorry, there was an error processing your message. Please try again.', 'bot');
         });
+    }
+    
+    function addMessageToChat(message, sender) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}-message`;
+        
+        const avatar = document.createElement('div');
+        avatar.className = 'message-avatar';
+        avatar.innerHTML = sender === 'bot' ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>';
+        
+        const content = document.createElement('div');
+        content.className = 'message-content';
+        
+        const bubble = document.createElement('div');
+        bubble.className = 'message-bubble';
+        bubble.textContent = message;
+        
+        content.appendChild(bubble);
+        messageDiv.appendChild(avatar);
+        messageDiv.appendChild(content);
+        
+        chatbotMessages.appendChild(messageDiv);
+        chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+    }
+    
+    function showTypingIndicator() {
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'message bot-message typing-message';
+        typingDiv.innerHTML = `
+            <div class="message-avatar">
+                <i class="fas fa-robot"></i>
+            </div>
+            <div class="message-content">
+                <div class="message-bubble">
+                    <div class="typing-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        chatbotMessages.appendChild(typingDiv);
+        chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+    }
+    
+    function hideTypingIndicator() {
+        const typingMessage = chatbotMessages.querySelector('.typing-message');
+        if (typingMessage) {
+            typingMessage.remove();
+        }
+    }
 </script>
 {% endblock %}

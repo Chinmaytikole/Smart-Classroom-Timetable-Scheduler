@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block title %}Sahayak Chatbot · Intelligent Timetable System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-8">
+        <div class="rounded-3" style="background: var(--bg-card); border: 1px solid var(--border-color); box-shadow: var(--shadow-md);">
+            <!-- Header -->
+            <div class="d-flex align-items-center justify-content-between px-4 py-3 border-bottom" style="border-color: var(--border-color); background: var(--bg-secondary);">
+                <div>
+                    <h5 class="mb-0" style="color: var(--text-primary); font-weight: 700;">Sahayak Chatbot</h5>
+                    <small id="status-text" class="text-muted">
+                        <span id="status-indicator" class="d-inline-block rounded-circle me-2" style="width: 10px; height: 10px; background: #ef4444;"></span>
+                        Initializing...
+                    </small>
+                </div>
+            </div>
+
+            <!-- Chat Container -->
+            <div id="chat-container" class="px-4 py-3" style="height: 60vh; overflow-y: auto; background: var(--bg-primary);">
+                <div class="d-flex justify-content-start mb-3">
+                    <div class="message-bubble bubble-bot px-3 py-2 rounded">
+                        <div>Hello! I am your Sahayak. Please wait while I get ready...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Form -->
+            <div class="px-3 py-3 border-top" style="border-color: var(--border-color); background: var(--bg-secondary);">
+                <form id="chat-form" class="d-flex gap-2">
+                    <input type="text" id="user-input" placeholder="Loading..." autocomplete="off" class="form-control" disabled>
+                    <button type="submit" id="send-button" class="btn" style="background: var(--accent-cyan); color: #0a0a0f;" disabled>
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+  
+    <style>
+        #chat-container::-webkit-scrollbar { width: 8px; }
+        #chat-container::-webkit-scrollbar-track { background: var(--bg-secondary); }
+        #chat-container::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+        .message-bubble { max-width: 80%; word-wrap: break-word; border: 1px solid var(--border-color); }
+        .message-bubble ul { list-style-type: disc; padding-left: 1.1rem; margin: 0.5rem 0; }
+        .bubble-bot { background: var(--bg-tertiary); color: var(--text-primary); border-top-left-radius: 0.5rem !important; }
+        .bubble-user { background: var(--bg-hover); color: var(--text-primary); border-top-right-radius: 0.5rem !important; box-shadow: var(--shadow-glow); border: none; }
+    </style>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const statusText = document.getElementById('status-text');
+    const chatContainer = document.getElementById('chat-container');
+    const chatForm = document.getElementById('chat-form');
+    const userInput = document.getElementById('user-input');
+    const sendButton = document.getElementById('send-button');
+
+    document.addEventListener('DOMContentLoaded', checkServerStatus);
+    chatForm.addEventListener('submit', handleQuestionSubmit);
+
+    function setSystemStatus(isReady, message) {
+        const indicator = document.getElementById('status-indicator');
+        if (indicator) {
+            indicator.style.background = isReady ? '#22c55e' : '#ef4444';
+        }
+        userInput.disabled = !isReady;
+        sendButton.disabled = !isReady;
+        userInput.placeholder = isReady ? 'Ask a question about the system…' : 'System not ready.';
+        statusText.innerHTML = `<span id="status-indicator" class="d-inline-block rounded-circle me-2" style="width: 10px; height: 10px; background: ${isReady ? '#22c55e' : '#ef4444'};"></span>${message}`;
+    }
+
+    function appendMessage(sender, text) {
+        const isUser = sender === 'user';
+        const messageWrapper = document.createElement('div');
+        messageWrapper.className = 'd-flex mb-3 ' + (isUser ? 'justify-content-end' : 'justify-content-start');
+
+        const messageBubble = document.createElement('div');
+        messageBubble.className = 'message-bubble px-3 py-2 rounded ' + (isUser ? 'bubble-user' : 'bubble-bot');
+
+        // Convert markdown-like syntax to HTML
+        let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        formattedText = formattedText.replace(/\* (.*?)(\n|$)/g, '<li>$1</li>');
+        formattedText = formattedText.replace(/(<li>.*<\/li>)/gs, '<ul>$1<\/ul>');
+
+        const messageText = document.createElement('div');
+        messageText.innerHTML = formattedText;
+        messageBubble.appendChild(messageText);
+
+        messageWrapper.appendChild(messageBubble);
+        chatContainer.appendChild(messageWrapper);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    async function checkServerStatus() {
+        try {
+            setSystemStatus(false, 'Connecting to server...');
+            const response = await fetch('/status');
+            const result = await response.json();
+            if (result.is_ready) {
+                setSystemStatus(true, 'Ready to answer questions');
+                appendMessage('system', 'You can now ask questions.');
+            } else {
+                throw new Error('Backend not ready.');
+            }
+        } catch (error) {
+            setSystemStatus(false, 'Error connecting to backend');
+            appendMessage('system', `Failed to initialize: ${error.message}`);
+        }
+    }
+
+    async function handleQuestionSubmit(event) {
+        event.preventDefault();
+        const question = userInput.value.trim();
+        if (!question) return;
+
+        appendMessage('user', question);
+        userInput.value = '';
+        sendButton.disabled = true;
+        appendMessage('system', '...');
+        const thinkingIndicator = chatContainer.lastChild;
+
+        try {
+            const response = await fetch('/ask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question }),
+            });
+            const result = await response.json();
+            thinkingIndicator.remove();
+            if (result.success) {
+                appendMessage('system', result.answer);
+            } else {
+                throw new Error(result.error || 'Failed to get an answer.');
+            }
+        } catch (error) {
+            thinkingIndicator.remove();
+            appendMessage('system', `Sorry, an error occurred: ${error.message}`);
+        } finally {
+            sendButton.disabled = false;
+            userInput.focus();
+        }
+    }
+</script>
+{% endblock %}

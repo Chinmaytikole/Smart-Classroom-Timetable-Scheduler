@@ -20,12 +20,40 @@ from routes.notifications import notifications_bp
 from routes.users import users_bp  # Import the users blueprint
 from routes.attendance import attendance_bp  # Import the attendance blueprint
 from routes.faculty_events import faculty_events_bp
+
+# Google Gemini AI imports
+import google.generativeai as genai
+from dotenv import load_dotenv
 app = Flask(__name__)
+
+# Load environment variables
+load_dotenv()
 
 # App configuration
 app.secret_key = 'your_secret_key_here_change_in_production'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+
+# Google Gemini AI Configuration
+GENAI_API_KEY = os.getenv('GOOGLE_API_KEY') or os.getenv('GENAI_API_KEY')
+GENAI_MODEL_NAME = os.getenv('GEMINI_MODEL_NAME', 'gemini-1.5-flash')
+GENAI_MODEL_FALLBACKS = [
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-pro-latest',
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-001',
+    'gemini-1.5-pro',
+    'gemini-1.5-flash-8b',
+    'gemini-1.5-flash-8b-latest',
+    'gemini-1.0-pro',
+]
+
+# Configure Gemini AI
+if GENAI_API_KEY:
+    genai.configure(api_key=GENAI_API_KEY)
+    app.logger.info("Google Gemini AI configured successfully")
+else:
+    app.logger.warning("Google Gemini API key not found. Chatbot will use fallback responses.")
 
 app.register_blueprint(events_bp)
 app.register_blueprint(exams_bp)
@@ -1270,7 +1298,7 @@ from flask import Response, jsonify
 import base64
 import numpy as np
 import json
-from pyzbar.pyzbar import decode
+
 
 # Global variables for camera management
 camera = None
@@ -4021,6 +4049,176 @@ def get_faculty_classes():
         'subjects': [dict(row) for row in subjects]
     })
 
+@app.route('/chatbot')
+def chatbot():
+    """Chatbot page accessible to all authenticated users"""
+    # Check if user is logged in with any role
+    if 'user_id' in session or 'teacher_id' in session or 'student_id' in session:
+        return render_template('chatbot.html')
+    else:
+        flash('Please log in to access the chatbot.', 'error')
+        return redirect(url_for('login'))
+
+# Chatbot API routes for functionality (if needed)
+@app.route('/status')
+def chatbot_status():
+    """Check if chatbot backend is ready"""
+    ai_status = "AI-powered" if GENAI_API_KEY else "Basic responses"
+    status_message = f"Sahayak is ready ({ai_status})"
+    
+    return jsonify({
+        'status': 'online',
+        'is_ready': True, 
+        'message': status_message,
+        'ai_enabled': bool(GENAI_API_KEY),
+        'model': GENAI_MODEL_NAME if GENAI_API_KEY else None
+    })
+
+@app.route('/ask', methods=['POST'])
+def chatbot_ask():
+    """Handle chatbot questions"""
+    # Check if user is logged in
+    if not ('user_id' in session or 'teacher_id' in session or 'student_id' in session):
+        return jsonify({'success': False, 'error': 'Authentication required'})
+    
+    data = request.get_json()
+    question = data.get('question', '') or data.get('message', '')
+    question = question.strip()
+    
+    if not question:
+        return jsonify({'success': False, 'error': 'Question cannot be empty'})
+    
+    try:
+        # Generate AI-powered or fallback response
+        answer = generate_chatbot_response(question)
+        
+        return jsonify({
+            'success': True,
+            'response': answer,  # Changed from 'answer' to match frontend
+            'answer': answer,    # Keep both for compatibility
+            'timestamp': datetime.now().isoformat(),
+            'ai_powered': bool(GENAI_API_KEY)
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error generating chatbot response: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'error': 'Sorry, I encountered an error while processing your question. Please try again.'
+        })
+
+def get_system_context():
+    """Get contextual information about the system for AI responses"""
+    context = {
+        'system_name': 'Smart Classroom Timetable Scheduler',
+        'assistant_name': 'Sahayak',
+        'features': [
+            'Timetable generation and management',
+            'Attendance tracking with QR codes',
+            'Faculty and student management',
+            'Classroom allocation and management',
+            'Exam scheduling and management',
+            'Event management and notifications',
+            'Report generation and analytics',
+            'User role management (Admin, Faculty, Student)'
+        ],
+        'user_role': session.get('role', 'user')
+    }
+    return context
+
+def generate_ai_response(question, context):
+    """Generate AI-powered response using Google Gemini"""
+    try:
+        # Create system prompt with context
+        system_prompt = f"""You are Sahayak, an intelligent assistant for the {context['system_name']}. 
+        You are helpful, knowledgeable, and professional. You assist users with questions about:
+        
+        System Features:
+        {chr(10).join(f'- {feature}' for feature in context['features'])}
+        
+        The current user role is: {context['user_role']}
+        
+        Please provide helpful, accurate, and concise responses related to the timetable management system.
+        If asked about features not available in the system, politely explain what the system can do instead.
+        Keep responses conversational but professional.
+        """
+        
+        # Try each model until one works
+        for model_name in [GENAI_MODEL_NAME] + GENAI_MODEL_FALLBACKS:
+            try:
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content(
+                    f"{system_prompt}\n\nUser question: {question}",
+                    generation_config=genai.types.GenerationConfig(
+                        candidate_count=1,
+                        max_output_tokens=500,
+                        temperature=0.7,
+                    )
+                )
+                
+                if response.text:
+                    app.logger.info(f"AI response generated successfully using model: {model_name}")
+                    return response.text.strip()
+                    
+            except Exception as model_error:
+                app.logger.warning(f"Model {model_name} failed: {str(model_error)}")
+                continue
+        
+        # If all models fail, return None to fall back to simple responses
+        app.logger.error("All AI models failed, falling back to simple responses")
+        return None
+        
+    except Exception as e:
+        app.logger.error(f"AI response generation failed: {str(e)}")
+        return None
+
+def generate_chatbot_response(question):
+    """Generate chatbot response - AI-powered with fallback to simple responses"""
+    # Get system context
+    context = get_system_context()
+    
+    # Try AI response first if API key is available
+    if GENAI_API_KEY:
+        ai_response = generate_ai_response(question, context)
+        if ai_response:
+            return ai_response
+    
+    # Fallback to simple keyword-based responses
+    question_lower = question.lower()
+    
+    if any(word in question_lower for word in ['timetable', 'schedule', 'class']):
+        return "I can help you with timetable-related queries. You can view your schedule from the dashboard or generate new timetables using the timetable management system."
+    
+    elif any(word in question_lower for word in ['attendance', 'present', 'absent']):
+        return "For attendance management, you can mark attendance through the attendance module. Students can scan QR codes, and faculty can generate attendance reports."
+    
+    elif any(word in question_lower for word in ['exam', 'test', 'examination']):
+        return "You can manage exams through the exam management system. Create exam schedules, assign classrooms, and track exam dates from the exams section."
+    
+    elif any(word in question_lower for word in ['faculty', 'teacher', 'professor']):
+        return "Faculty management includes adding teachers, assigning subjects, managing workload, and tracking faculty schedules. Check the faculty management section."
+    
+    elif any(word in question_lower for word in ['student', 'batch', 'class strength']):
+        return "Student management covers batch creation, student enrollment, attendance tracking, and academic records. Visit the student management section."
+    
+    elif any(word in question_lower for word in ['room', 'classroom', 'venue']):
+        return "Classroom management helps you allocate rooms, track capacity, and avoid conflicts. You can manage classrooms from the infrastructure section."
+    
+    elif any(word in question_lower for word in ['event', 'activity', 'program']):
+        return "Event management allows you to create, schedule, and track college events, meetings, and activities. Access this from the events section."
+    
+    elif any(word in question_lower for word in ['report', 'analytics', 'statistics']):
+        return "The reporting system provides attendance reports, timetable analytics, faculty workload statistics, and student performance insights."
+    
+    elif any(word in question_lower for word in ['help', 'support', 'how to']):
+        return "I'm here to help! You can ask me about timetables, attendance, exams, faculty management, students, classrooms, events, or reports. What would you like to know?"
+    
+    elif any(word in question_lower for word in ['hello', 'hi', 'hey', 'greeting']):
+        return "Hello! I'm Sahayak, your intelligent assistant for the timetable management system. How can I help you today?"
+    
+    else:
+        return "I'm still learning! For now, I can help you with questions about timetables, attendance, exams, faculty, students, classrooms, events, and reports. Please try asking about one of these topics."
+
 
 if __name__ == '__main__':
     # Create upload directory if it doesn't exist
@@ -4030,4 +4228,4 @@ if __name__ == '__main__':
     # Initialize database
     init_db()
     
-    app.run(debug=True, host='0.0.0.0', port=5000, ssl_context='adhoc')
+    app.run(debug=True, host='0.0.0.0', port=5000)
