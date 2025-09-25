@@ -1577,11 +1577,18 @@ def student_dashboard():
     cursor.execute('''
         SELECT COUNT(*) as total_classes,
                SUM(CASE WHEN status = 'PRESENT' THEN 1 ELSE 0 END) as present_classes,
-               ROUND(SUM(CASE WHEN status = 'PRESENT' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as attendance_percentage
+               CASE 
+                   WHEN COUNT(*) = 0 THEN NULL
+                   ELSE ROUND(SUM(CASE WHEN status = 'PRESENT' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2)
+               END as attendance_percentage
         FROM student_attendance
         WHERE student_id = ?
     ''', (student_id,))
     attendance_summary = cursor.fetchone()
+    
+    # If no attendance data, set attendance_summary to None
+    if attendance_summary and attendance_summary['total_classes'] == 0:
+        attendance_summary = None
     
     # Get today's classes and attendance status - FIXED QUERY
     cursor.execute('''
