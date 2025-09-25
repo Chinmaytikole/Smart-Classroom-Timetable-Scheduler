@@ -1,0 +1,417 @@
+{% extends "base.html" %}
+
+{% block title %}Faculty Events - Intelligent Timetable System{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="header-content">
+            <div>
+                <h1 class="main-title">
+                    <i class="fas fa-calendar-alt title-icon"></i> Faculty Events
+                </h1>
+                <p class="welcome-text">View and manage your scheduled events</p>
+            </div>
+            <div class="faculty-info">
+                <span class="badge bg-primary">
+                    <i class="fas fa-user-tie"></i> Faculty Access
+                </span>
+            </div>
+        </div>
+        <div class="header-glow"></div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-primary">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>{{ events|length }}</h3>
+                    <span>Total Events</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-success">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>{{ events|selectattr('is_attending', 'equalto', 1)|list|length }}</h3>
+                    <span>Attending</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-warning">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>{{ upcoming_events|length }}</h3>
+                    <span>Upcoming (7 days)</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-info">
+                    <i class="fas fa-calendar-day"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>{{ events|selectattr('days_remaining', 'equalto', 0)|list|length }}</h3>
+                    <span>Today</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- My Events List -->
+    <div class="content-card">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-list card-icon"></i> My Events
+            </h5>
+            <div class="header-actions">
+                <a href="/api/faculty/events/calendar" class="action-btn action-cyan">
+                    <i class="fas fa-calendar"></i> Calendar View
+                </a>
+            </div>
+        </div>
+        <div class="card-content">
+            {% if events %}
+            <div class="table-container">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>Event Title</th>
+                            <th>Description</th>
+                            <th>Date & Time</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                            <th>Attendance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for event in events %}
+                        <tr class="table-row">
+                            <td class="table-cell fw-bold">
+                                {{ event.title }}
+                                {% if event.days_remaining == 0 %}
+                                <span class="badge bg-danger ms-1">Today</span>
+                                {% elif event.days_remaining < 0 %}
+                                <span class="badge bg-secondary ms-1">Past</span>
+                                {% endif %}
+                            </td>
+                            <td class="table-cell">
+                                {% if event.description %}
+                                {{ event.description|truncate(50) }}
+                                {% else %}
+                                <span class="text-muted">No description</span>
+                                {% endif %}
+                            </td>
+                            <td class="table-cell">
+                                {{ event.event_date }}<br>
+                                <small class="text-muted">{{ event.start_time }} - {{ event.end_time }}</small>
+                            </td>
+                            <td class="table-cell">{{ event.location or 'N/A' }}</td>
+                            <td class="table-cell">
+                                {% if event.days_remaining > 0 %}
+                                <span class="badge bg-success">Upcoming</span>
+                                {% elif event.days_remaining == 0 %}
+                                <span class="badge bg-warning">Today</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Completed</span>
+                                {% endif %}
+                            </td>
+                            <td class="table-cell">
+                                <div class="attendance-toggle">
+                                    {% if event.days_remaining >= 0 %}
+                                    <button class="btn btn-sm {% if event.is_attending %}btn-success{% else %}btn-outline-success{% endif %}"
+                                            onclick="updateAttendance({{ event.id }}, true)"
+                                            id="attend-btn-{{ event.id }}">
+                                        <i class="fas fa-check"></i> Attending
+                                    </button>
+                                    <button class="btn btn-sm {% if not event.is_attending and event.is_attending is not none %}btn-danger{% else %}btn-outline-danger{% endif %} ms-1"
+                                            onclick="updateAttendance({{ event.id }}, false)"
+                                            id="decline-btn-{{ event.id }}">
+                                        <i class="fas fa-times"></i> Decline
+                                    </button>
+                                    {% else %}
+                                    <span class="badge {% if event.is_attending %}bg-success{% else %}bg-danger{% endif %}">
+                                        {% if event.is_attending %}Attended{% else %}Not Attended{% endif %}
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-calendar-plus"></i>
+                </div>
+                <h4>No Events Assigned</h4>
+                <p>You don't have any events scheduled yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Upcoming Events Card -->
+    <div class="content-card mt-4">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-clock card-icon"></i> Upcoming Events (Next 7 Days)
+            </h5>
+        </div>
+        <div class="card-content">
+            {% if upcoming_events %}
+            <div class="event-grid">
+                {% for event in upcoming_events %}
+                <div class="event-card">
+                    <div class="event-date">
+                        <div class="event-day">{{ event.event_date.split('-')[2] }}</div>
+                        <div class="event-month">{{ event.event_date.split('-')[1]|int|month_abbr }}</div>
+                    </div>
+                    <div class="event-details">
+                        <h6 class="event-title">{{ event.title }}</h6>
+                        {% if event.description %}
+                        <p class="event-description">{{ event.description|truncate(60) }}</p>
+                        {% endif %}
+                        <div class="event-meta">
+                            <span class="event-time">
+                                <i class="fas fa-clock"></i> {{ event.start_time }} - {{ event.end_time }}
+                            </span>
+                            {% if event.location %}
+                            <span class="event-location">
+                                <i class="fas fa-map-marker-alt"></i> {{ event.location }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="event-actions">
+                        <span class="badge bg-{{ 'danger' if event.days_remaining <= 1 else 'warning' if event.days_remaining <= 3 else 'success' }}">
+                            {{ event.days_remaining }} day{{ 's' if event.days_remaining != 1 }} left
+                        </span>
+                        {% if event.is_attending %}
+                        <span class="badge bg-success mt-1">Confirmed</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <p>No upcoming events in the next 7 days</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function updateAttendance(eventId, isAttending) {
+    fetch(`/faculty/events/attendance/${eventId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({is_attending: isAttending})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update button styles
+            const attendBtn = document.getElementById(`attend-btn-${eventId}`);
+            const declineBtn = document.getElementById(`decline-btn-${eventId}`);
+            
+            if (isAttending) {
+                attendBtn.classList.remove('btn-outline-success');
+                attendBtn.classList.add('btn-success');
+                declineBtn.classList.remove('btn-danger');
+                declineBtn.classList.add('btn-outline-danger');
+            } else {
+                attendBtn.classList.remove('btn-success');
+                attendBtn.classList.add('btn-outline-success');
+                declineBtn.classList.remove('btn-outline-danger');
+                declineBtn.classList.add('btn-danger');
+            }
+            
+            showNotification('Attendance updated successfully!', 'success');
+        } else {
+            showNotification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showNotification('Error updating attendance', 'error');
+    });
+}
+
+function showNotification(message, type) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 1050; min-width: 300px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 3000);
+}
+</script>
+
+<style>
+.stat-card {
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+}
+
+.stat-info h3 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+}
+
+.stat-info span {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.attendance-toggle .btn {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.event-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1rem;
+}
+
+.event-card {
+    display: flex;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    border-left: 4px solid var(--accent-primary);
+    transition: all 0.3s ease;
+}
+
+.event-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.event-date {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    background: var(--accent-primary);
+    border-radius: 8px;
+    color: white;
+    margin-right: 1rem;
+    flex-shrink: 0;
+}
+
+.event-day {
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.event-month {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    opacity: 0.9;
+}
+
+.event-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.event-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+}
+
+.event-description {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: 0 0 0.5rem 0;
+    line-height: 1.4;
+}
+
+.event-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.event-time, .event-location {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.event-actions {
+    margin-left: 1rem;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.faculty-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+</style>
+{% endblock %}

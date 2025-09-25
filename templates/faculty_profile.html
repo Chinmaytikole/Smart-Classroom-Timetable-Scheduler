@@ -1,0 +1,17 @@
+<!-- Add this to the header section of faculty_profile.html -->
+<div class="header-content">
+    <div>
+        <h1 class="main-title">
+            <i class="fas fa-user title-icon"></i> My Profile
+        </h1>
+        <p class="welcome-text">View and manage your profile information</p>
+    </div>
+    <div>
+        <a href="{{ url_for('users.update_faculty_profile') }}" class="action-btn action-primary">
+            <i class="fas fa-edit"></i> Edit Profile
+        </a>
+        <a href="{{ url_for('users.change_password') }}" class="action-btn action-secondary">
+            <i class="fas fa-key"></i> Change Password
+        </a>
+    </div>
+</div>

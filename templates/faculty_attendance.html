@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block title %}Mark Attendance - Faculty Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="header-section">
+        <div class="header-content">
+            <div>
+                <h1 class="main-title">
+                    <i class="fas fa-clipboard-check title-icon"></i> Mark Student Attendance
+                </h1>
+                <p class="welcome-text">Select semester, batch, and subject to mark attendance</p>
+            </div>
+            <a href="{{ url_for('attendance.faculty_attendance_history') }}" class="action-btn action-secondary">
+                <i class="fas fa-history"></i> View History
+            </a>
+        </div>
+        <div class="header-glow"></div>
+    </div>
+
+    <!-- Selection Form -->
+    <div class="content-card">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-filter card-icon"></i> Select Class Details
+            </h5>
+        </div>
+        <div class="card-content">
+            <form id="attendanceForm">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Semester</label>
+                        <select class="form-select" id="semesterSelect" required>
+                            <option value="">Select Semester</option>
+                            {% for sem_id, semester in semesters.items() %}
+                            <option value="{{ sem_id }}">{{ semester.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Batch</label>
+                        <select class="form-select" id="batchSelect" required disabled>
+                            <option value="">Select Batch</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Subject</label>
+                        <select class="form-select" id="subjectSelect" required disabled>
+                            <option value="">Select Subject</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Date</label>
+                        <input type="date" class="form-control" id="attendanceDate" value="{{ today }}" required>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-3">
+                    <button type="submit" class="action-btn action-primary" id="loadStudentsBtn">
+                        <i class="fas fa-users"></i> Load Students
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Students Attendance Table -->
+    <div class="content-card" id="studentsSection" style="display: none;">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-user-graduate card-icon"></i> Student Attendance
+                <span id="classInfo" class="badge bg-info ms-2"></span>
+            </h5>
+        </div>
+        <div class="card-content">
+            <div id="studentsTableContainer">
+                <!-- Students table will be loaded here -->
+            </div>
+            
+            <div class="mt-4 text-center">
+                <button class="action-btn action-success" id="submitAttendanceBtn" style="display: none;">
+                    <i class="fas fa-save"></i> Save Attendance
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add hidden div to pass semesters data -->
+<div id="semestersData" data-semesters="{{ semesters|tojson|safe }}" style="display: none;"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get semesters data from hidden div
+    const semestersData = document.getElementById('semestersData');
+    const semesters = JSON.parse(semestersData.getAttribute('data-semesters'));
+    
+    const semesterSelect = document.getElementById('semesterSelect');
+    const batchSelect = document.getElementById('batchSelect');
+    const subjectSelect = document.getElementById('subjectSelect');
+    const attendanceDate = document.getElementById('attendanceDate');
+    const loadStudentsBtn = document.getElementById('loadStudentsBtn');
+    const studentsSection = document.getElementById('studentsSection');
+    const studentsTableContainer = document.getElementById('studentsTableContainer');
+    const submitAttendanceBtn = document.getElementById('submitAttendanceBtn');
+    const classInfo = document.getElementById('classInfo');
+
+    // Populate batches when semester is selected
+    semesterSelect.addEventListener('change', function() {
+        const semId = this.value;
+        batchSelect.innerHTML = '<option value="">Select Batch</option>';
+        subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+        
+        if (semId && semesters[semId]) {
+            batchSelect.disabled = false;
+            const batches = semesters[semId].batches;
+            
+            for (const [batchId, batch] of Object.entries(batches)) {
+                const option = document.createElement('option');
+                option.value = batchId;
+                option.textContent = batch.name;
+                batchSelect.appendChild(option);
+            }
+        } else {
+            batchSelect.disabled = true;
+            subjectSelect.disabled = true;
+        }
+    });
+
+    // Populate subjects when batch is selected
+    batchSelect.addEventListener('change', function() {
+        const semId = semesterSelect.value;
+        const batchId = this.value;
+        subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+        
+        if (semId && batchId && semesters[semId] && semesters[semId].batches[batchId]) {
+            subjectSelect.disabled = false;
+            const subjects = semesters[semId].batches[batchId].subjects;
+            
+            subjects.forEach(function(subject) {
+                const option = document.createElement('option');
+                option.value = subject.id;
+                option.textContent = subject.name;
+                subjectSelect.appendChild(option);
+            });
+        } else {
+            subjectSelect.disabled = true;
+        }
+    });
+
+    // Load students when form is submitted
+    document.getElementById('attendanceForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        loadStudents();
+    });
+
+    function loadStudents() {
+        const batchId = batchSelect.value;
+        const subjectId = subjectSelect.value;
+        const selectedDate = attendanceDate.value;
+
+        if (!batchId || !subjectId || !selectedDate) {
+            alert('Please select all required fields');
+            return;
+        }
+
+        loadStudentsBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+        loadStudentsBtn.disabled = true;
+
+        fetch('/api/faculty/get-students?batch_id=' + batchId + '&subject_id=' + subjectId + '&date=' + selectedDate)
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(data) {
+                if (data.success) {
+                    displayStudents(data.students, selectedDate);
+                    classInfo.textContent = subjectSelect.options[subjectSelect.selectedIndex].text + ' - ' + batchSelect.options[batchSelect.selectedIndex].text;
+                    studentsSection.style.display = 'block';
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(function(error) {
+                console.error('Error:', error);
+                alert('Error loading students');
+            })
+            .finally(function() {
+                loadStudentsBtn.innerHTML = '<i class="fas fa-users"></i> Load Students';
+                loadStudentsBtn.disabled = false;
+            });
+    }
+
+    function displayStudents(students, selectedDate) {
+        let html = `
+            <div class="table-responsive">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>Roll No.</th>
+                            <th>Student Name</th>
+                            <th>Attendance</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        students.forEach(function(student) {
+            const attendance = student.attendance || {};
+            const presentSelected = attendance.status === 'Present' ? 'selected' : '';
+            const absentSelected = attendance.status === 'Absent' ? 'selected' : '';
+            const lateSelected = attendance.status === 'Late' ? 'selected' : '';
+            
+            html += `
+                <tr>
+                    <td>${student.roll_number}</td>
+                    <td>${student.name}</td>
+                    <td>
+                        <select class="form-select attendance-status" data-student-id="${student.id}">
+                            <option value="">Select Status</option>
+                            <option value="Present" ${presentSelected}>Present</option>
+                            <option value="Absent" ${absentSelected}>Absent</option>
+                            <option value="Late" ${lateSelected}>Late</option>
+                        </select>
+                    </td>
+                    <td>
+                        <input type="text" class="form-control attendance-notes" 
+                               data-student-id="${student.id}" 
+                               value="${attendance.notes || ''}" 
+                               placeholder="Optional notes">
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-3 text-muted">
+                <small>Date: ${selectedDate} | Total Students: ${students.length}</small>
+            </div>
+        `;
+
+        studentsTableContainer.innerHTML = html;
+        submitAttendanceBtn.style.display = 'block';
+
+        // Add change event to show save button when changes are made
+        document.querySelectorAll('.attendance-status, .attendance-notes').forEach(function(element) {
+            element.addEventListener('change', function() {
+                submitAttendanceBtn.style.display = 'block';
+            });
+        });
+    }
+
+    // Submit attendance
+    submitAttendanceBtn.addEventListener('click', function() {
+        const batchId = batchSelect.value;
+        const subjectId = subjectSelect.value;
+        const selectedDate = attendanceDate.value;
+        
+        const studentsData = [];
+
+        document.querySelectorAll('.attendance-status').forEach(function(select) {
+            const studentId = select.getAttribute('data-student-id');
+            const status = select.value;
+            const notesInput = document.querySelector('.attendance-notes[data-student-id="' + studentId + '"]');
+            const notes = notesInput ? notesInput.value : '';
+
+            if (status) {
+                studentsData.push({
+                    student_id: studentId,
+                    status: status,
+                    notes: notes
+                });
+            }
+        });
+
+        if (studentsData.length === 0) {
+            alert('Please mark attendance for at least one student');
+            return;
+        }
+
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        this.disabled = true;
+
+        fetch('/api/faculty/mark-attendance', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                batch_id: batchId,
+                subject_id: subjectId,
+                date: selectedDate,
+                students: studentsData
+            })
+        })
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(data) {
+            if (data.success) {
+                alert('✅ ' + data.message);
+                submitAttendanceBtn.style.display = 'none';
+            } else {
+                alert('❌ ' + data.message);
+            }
+        })
+        .catch(function(error) {
+            console.error('Error:', error);
+            alert('Error saving attendance');
+        })
+        .finally(function() {
+            this.innerHTML = '<i class="fas fa-save"></i> Save Attendance';
+            this.disabled = false;
+        }.bind(this));
+    });
+});
+</script>
+{% endblock %}

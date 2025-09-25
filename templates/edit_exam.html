@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Exam - Intelligent Timetable System{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="header-content">
+            <div>
+                <h1 class="main-title">
+                    <i class="fas fa-edit title-icon"></i> Edit Exam
+                </h1>
+                <p class="welcome-text">Update examination details</p>
+            </div>
+            <a href="{{ url_for('exams.exams') }}" class="action-btn">
+                <i class="fas fa-arrow-left"></i> Back to Exams
+            </a>
+        </div>
+        <div class="header-glow"></div>
+    </div>
+
+    <!-- Exam Form -->
+    <div class="content-card">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-edit card-icon"></i> Exam Details
+            </h5>
+        </div>
+        <div class="card-content">
+            <form method="POST" class="needs-validation" novalidate>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Exam Name *</label>
+                            <input type="text" class="form-control" name="name" required 
+                                   value="{{ exam.name }}">
+                            <div class="invalid-feedback">Please provide an exam name.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Department</label>
+                            <select class="form-select" name="department_id">
+                                <option value="">Select Department</option>
+                                {% for dept in departments %}
+                                <option value="{{ dept.id }}" {% if exam.department_id == dept.id %}selected{% endif %}>
+                                    {{ dept.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Semester</label>
+                            <select class="form-select" name="semester">
+                                <option value="">Select Semester</option>
+                                {% for sem in semesters %}
+                                <option value="{{ sem }}" {% if exam.semester == sem %}selected{% endif %}>
+                                    Semester {{ sem }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Subject</label>
+                            <select class="form-select" name="subject_id">
+                                <option value="">Select Subject</option>
+                                {% for subject in subjects %}
+                                <option value="{{ subject.id }}" {% if exam.subject_id == subject.id %}selected{% endif %}>
+                                    {{ subject.code }} - {{ subject.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Classroom</label>
+                            <select class="form-select" name="classroom_id">
+                                <option value="">Select Classroom</option>
+                                {% for classroom in classrooms %}
+                                <option value="{{ classroom.id }}" {% if exam.classroom_id == classroom.id %}selected{% endif %}>
+                                    {{ classroom.name }} (Capacity: {{ classroom.capacity }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Exam Date *</label>
+                            <input type="date" class="form-control" name="exam_date" required 
+                                   value="{{ exam.exam_date }}">
+                            <div class="invalid-feedback">Please select a valid exam date.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Start Time *</label>
+                            <input type="time" class="form-control" name="start_time" required
+                                   value="{{ exam.start_time }}">
+                            <div class="invalid-feedback">Please select a start time.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">End Time *</label>
+                            <input type="time" class="form-control" name="end_time" required
+                                   value="{{ exam.end_time }}">
+                            <div class="invalid-feedback">Please select an end time.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" name="description" rows="3">{{ exam.description or '' }}</textarea>
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="{{ url_for('exams.exams') }}" class="action-btn me-md-2">Cancel</a>
+                    <button type="submit" class="action-btn action-blue">Update Exam</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Exam Information -->
+    <div class="content-card mt-3">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-info-circle card-icon"></i> Exam Information
+            </h5>
+        </div>
+        <div class="card-content">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Created by:</strong> {{ exam.created_by_username or 'System' }}</p>
+                    <p><strong>Created at:</strong> {{ exam.created_at }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Last updated:</strong> {{ exam.updated_at or 'Never' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const forms = document.querySelectorAll('.needs-validation');
+    
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            
+            form.classList.add('was-validated');
+        }, false);
+    });
+
+    // Time validation
+    const startTime = document.querySelector('input[name="start_time"]');
+    const endTime = document.querySelector('input[name="end_time"]');
+    
+    function validateTimes() {
+        if (startTime.value && endTime.value) {
+            if (startTime.value >= endTime.value) {
+                endTime.setCustomValidity('End time must be after start time');
+            } else {
+                endTime.setCustomValidity('');
+            }
+        }
+    }
+    
+    startTime.addEventListener('change', validateTimes);
+    endTime.addEventListener('change', validateTimes);
+});
+</script>
+{% endblock %}

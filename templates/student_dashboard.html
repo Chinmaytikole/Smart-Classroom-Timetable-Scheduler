@@ -1,0 +1,1170 @@
+{% extends "base.html" %}
+
+{% block head %}
+<!-- Remove HTML5 QR Code Scanner Library - we'll use OpenCV approach instead -->
+{% endblock %}
+
+{% block content %}
+    
+    <!-- Main Content -->
+    <div class="dashboard-container">
+        <!-- Header Section -->
+        <div class="header-section">
+            <div class="header-content">
+                <h1 class="main-title">
+                    <span class="title-icon">👨‍🎓</span>
+                    <span class="title-text">Student Dashboard</span>
+                </h1>
+                <div class="welcome-text">
+                    Welcome back, <span class="user-name">{{ session.student_name }}</span>
+                    <span class="badge bg-light text-dark ms-2">Student</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="scan-attendance-btn" class="btn btn-primary me-2">
+                    <i class="fas fa-qrcode me-1"></i>Scan Attendance
+                </button>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-danger">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                </a>
+            </div>
+            <div class="header-glow"></div>
+        </div>
+        
+        <!-- QR Scanner Modal -->
+        <div class="modal fade" id="qrScannerModal" tabindex="-1" aria-labelledby="qrScannerModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title" id="qrScannerModalLabel">
+                            <i class="fas fa-qrcode me-2"></i>Scan QR Code for Attendance
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- QR Scanner Section -->
+                        <div id="qr-section">
+                            <div class="alert alert-info mb-3">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Position the QR code clearly in front of the camera. Click "Scan QR Code" when ready.
+                            </div>
+                            
+                            <div class="text-center mb-3">
+                                <img id="video-stream" src="" 
+                                     width="640" height="480" alt="Camera Feed" 
+                                     style="border: 2px solid #dee2e6; border-radius: 8px; background: #f8f9fa;">
+                            </div>
+                            
+                            <div class="text-center mb-3">
+                                <button id="scan-qr-btn" class="btn btn-success btn-lg me-2">
+                                    <i class="fas fa-qrcode me-2"></i>Scan QR Code
+                                </button>
+                                <button id="start-camera-btn" class="btn btn-outline-primary btn-lg me-2">
+                                    <i class="fas fa-camera me-2"></i>Start Camera
+                                </button>
+                                <button id="stop-camera-btn" class="btn btn-outline-secondary btn-lg">
+                                    <i class="fas fa-stop me-2"></i>Stop Camera
+                                </button>
+                            </div>
+                            
+                            <div id="qr-status" class="text-center mb-3">
+                                <span id="qr-indicator" class="badge bg-secondary fs-6">
+                                    <i class="fas fa-camera-off me-1"></i>Camera Off
+                                </span>
+                            </div>
+                            
+                            <div id="qr-result" class="mt-3"></div>
+                        </div>
+
+                        <!-- Face Verification Section -->
+                        <div id="face-section" style="display: none;">
+                            <h5 class="mt-4">Step 2: Face Verification</h5>
+                            <div id="session-info" class="alert alert-info mb-3"></div>
+                            
+                            <div class="text-center">
+                                <img id="face-stream" src="" 
+                                     width="400" height="300" alt="Face Verification" 
+                                     style="border: 2px solid #dee2e6; border-radius: 8px;">
+                            </div>
+                            
+                            <div class="text-center mt-3">
+                                <button id="capture-face-btn" class="btn btn-success btn-lg">
+                                    <i class="fas fa-user-check me-2"></i>Verify Face & Mark Attendance
+                                </button>
+                            </div>
+                            
+                            <div id="verification-result" class="mt-3"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+      <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card stat-primary">
+                <div class="stat-content">
+                    <div class="stat-info">
+                        <div class="stat-label">Attendance</div>
+                        <div class="stat-value">{{ 75 }}%</div>
+                        <!-- attendance_summary.attendance_percentage if attendance_summary else 75 -->
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                </div>
+                <div class="stat-bar"></div>
+            </div>
+
+            <div class="stat-card stat-success">
+                <div class="stat-content">
+                    <div class="stat-info">
+                        <div class="stat-label">Present Days</div>
+                        <div class="stat-value">{{  75 }}</div><!-- attendance_summary.present_classes if attendance_summary else 75 -->
+                        
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                </div>
+                <div class="stat-bar"></div>
+            </div>
+
+            <div class="stat-card stat-info">
+                <div class="stat-content">
+                    <div class="stat-info">
+                        <div class="stat-label">Upcoming Events</div>
+                        <div class="stat-value">{{ upcoming_events|length if upcoming_events else 0 }}</div>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar-day"></i>
+                    </div>
+                </div>
+                <div class="stat-bar"></div>
+            </div>
+
+            <div class="stat-card stat-warning">
+                <div class="stat-content">
+                    <div class="stat-info">
+                        <div class="stat-label">Pending Tasks</div>
+                        <div class="stat-value">{{ pending_task}}</div>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                </div>
+                <div class="stat-bar"></div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="content-grid">
+            <!-- Left Column -->
+            <div>
+                <!-- Today's Schedule & Attendance -->
+                <div class="content-card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <span class="card-icon">📅</span>
+                            Today's Schedule & Attendance
+                            <span class="badge bg-primary ms-2">{{ today_attendance|length if today_attendance else 0 }} Classes</span>
+                        </h2>
+                        <div class="card-actions">
+                            <span class="date-display">{{ current_date }}</span>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        {% if today_attendance %}
+                        <div class="table-container">
+                            <table class="modern-table">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Subject</th>
+                                        <th>Faculty</th>
+                                        <th>Status</th>
+                                        <th>Room</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for att in today_attendance %}
+                                    <tr class="table-row {% if att.status == 'PRESENT' %}present-row{% elif att.status == 'ABSENT' %}absent-row{% else %}pending-row{% endif %}">
+                                        <td class="table-cell fw-bold">
+                                            <i class="fas fa-clock me-1 text-muted"></i>{{ att.time_slot }}
+                                        </td>
+                                        <td class="table-cell">
+                                            <div class="subject-info">
+                                                <div class="subject-name">{{ att.subject_name }}</div>
+                                                {% if att.subject_code %}
+                                                <small class="text-muted">{{ att.subject_code }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td class="table-cell">{{ att.faculty_name if att.faculty_name else 'N/A' }}</td>
+                                        <td class="table-cell">
+                                            <span class="badge bg-{{ 'success' if att.status == 'PRESENT' else 'danger' if att.status == 'ABSENT' else 'warning' }} badge-custom">
+                                                <i class="fas fa-{{ 'check' if att.status == 'PRESENT' else 'times' if att.status == 'ABSENT' else 'clock' }} me-1"></i>
+                                                {{ att.status }}
+                                            </span>
+                                            {% if att.attendance_time and att.status == 'PRESENT' %}
+                                            <br><small class="text-muted">{{ att.attendance_time.split(' ')[1] if ' ' in att.attendance_time else att.attendance_time }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td class="table-cell">
+                                            <i class="fas fa-door-open me-1 text-muted"></i>
+                                            {{ att.classroom_name if att.classroom_name else 'N/A' }}
+                                        </td>
+                                        <td class="table-cell">
+                                            {% if att.status == 'PENDING' %}
+                                            <button class="btn btn-sm btn-outline-primary mark-attendance-btn" 
+                                                    data-slot-id="{{ att.slot_id }}" 
+                                                    data-subject="{{ att.subject_name }}">
+                                                <i class="fas fa-check me-1"></i>Mark
+                                            </button>
+                                            {% else %}
+                                            <span class="text-muted">Completed</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Today's Summary -->
+                        <div class="attendance-summary mt-4 p-3 bg-light rounded">
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <div class="fw-bold text-success fs-4">{{ today_attendance|selectattr('status', 'equalto', 'PRESENT')|list|length }}</div>
+                                    <small class="text-muted">Present</small>
+                                </div>
+                                <div class="col-4">
+                                    <div class="fw-bold text-warning fs-4">{{ today_attendance|selectattr('status', 'equalto', 'PENDING')|list|length }}</div>
+                                    <small class="text-muted">Pending</small>
+                                </div>
+                                <div class="col-4">
+                                    <div class="fw-bold text-danger fs-4">{{ today_attendance|selectattr('status', 'equalto', 'ABSENT')|list|length }}</div>
+                                    <small class="text-muted">Absent</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <div class="empty-icon">📅</div>
+                            <h3>No Classes Today</h3>
+                            <p>Enjoy your free day!</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Recent Exam Results -->
+                <div class="content-card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <span class="card-icon">📊</span>
+                            Recent Exam Results
+                        </h2>
+                    </div>
+                    <div class="card-content">
+                        {% if recent_marks %}
+                        <div class="table-container">
+                            <table class="modern-table">
+                                <thead>
+                                    <tr>
+                                        <th>Subject</th>
+                                        <th>Exam Type</th>
+                                        <th>Marks</th>
+                                        <th>Percentage</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for mark in recent_marks %}
+                                    <tr class="table-row">
+                                        <td class="table-cell fw-bold">{{ mark.subject_name }}</td>
+                                        <td class="table-cell">{{ mark.exam_type }}</td>
+                                        <td class="table-cell">{{ mark.marks_obtained }}/{{ mark.total_marks }}</td>
+                                        <td class="table-cell">
+                                            <span class="badge bg-{{ 'success' if mark.percentage >= 75 else 'warning' if mark.percentage >= 50 else 'danger' }} badge-custom">
+                                                {{ mark.percentage }}%
+                                            </span>
+                                        </td>
+                                        <td class="table-cell">{{ mark.exam_date }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <div class="empty-icon">📝</div>
+                            <h3>No Results Yet</h3>
+                            <p>Exam results will appear here once available</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div>
+                <!-- Upcoming Events & Announcements -->
+                <div class="content-card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <span class="card-icon">📢</span>
+                            Upcoming Events & Announcements
+                        </h2>
+                    </div>
+                    <div class="card-content">
+                        {% if upcoming_events %}
+                        <div class="events-list">
+                            {% for event in upcoming_events %}
+                            <div class="event-item {% if event.priority == 'high' %}event-high-priority{% elif event.priority == 'medium' %}event-medium-priority{% else %}event-low-priority{% endif %}">
+                                <div class="event-icon">
+                                    {% if event.type == 'exam' %}
+                                    <i class="fas fa-file-alt text-danger"></i>
+                                    {% elif event.type == 'holiday' %}
+                                    <i class="fas fa-umbrella-beach text-success"></i>
+                                    {% elif event.type == 'deadline' %}
+                                    <i class="fas fa-flag text-warning"></i>
+                                    {% else %}
+                                    <i class="fas fa-calendar text-primary"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="event-details">
+                                    <div class="event-title">{{ event.title }}</div>
+                                    <div class="event-meta">
+                                        <span class="event-date">
+                                            <i class="fas fa-clock me-1"></i>{{ event.date }}
+                                            {% if event.time %}{{ event.time }}{% endif %}
+                                        </span>
+                                        {% if event.location %}
+                                        <span class="event-location">
+                                            <i class="fas fa-map-marker-alt me-1"></i>{{ event.location }}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    {% if event.description %}
+                                    <div class="event-description">{{ event.description }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="event-actions">
+                                    {% if event.type == 'exam' %}
+                                    <span class="badge bg-danger">Exam</span>
+                                    {% elif event.type == 'assignment' %}
+                                    <span class="badge bg-warning">Assignment</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <div class="empty-icon">📢</div>
+                            <h3>No Upcoming Events</h3>
+                            <p>Events and announcements will appear here</p>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Quick Actions -->
+                        <div class="quick-actions mt-3">
+                            <h6 class="mb-2">Quick Actions</h6>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-download me-1"></i>Download Timetable
+                                </button>
+                                <button class="btn btn-outline-success btn-sm">
+                                    <i class="fas fa-calendar-plus me-1"></i>Add Personal Event
+                                </button>
+                                <button class="btn btn-outline-info btn-sm">
+                                    <i class="fas fa-question-circle me-1"></i>Request Leave
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attendance Summary -->
+                <div class="content-card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <span class="card-icon">📈</span>
+                            Attendance Summary
+                        </h2>
+                    </div>
+                    <div class="card-content">
+                        {% if attendance_summary %}
+                        <div class="text-center mb-4">
+                            <div class="display-4 fw-bold text-primary">
+                                {{ 75  }}%
+                                <!-- attendance_summary.attendance_percentage -->
+                            </div>
+                            <p class="text-muted">Overall Attendance</p>
+                        </div>
+                        <div class="progress attendance-progress mb-3">
+                            <div class="progress-bar bg-{{ 'success' if attendance_summary.attendance_percentage is not none and attendance_summary.attendance_percentage >= 75 else 'warning' if attendance_summary.attendance_percentage is not none and attendance_summary.attendance_percentage >= 50 else 'danger' }}"
+                                 style="width: {{ attendance_summary.attendance_percentage or 0 }}%">
+                            </div>
+                        </div>
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="fw-bold text-success">{{ attendance_summary.present_classes }}</div>
+                                <small class="text-muted">Present</small>
+                            </div>
+                            <div class="col-6">
+                                <div class="fw-bold text-danger">
+                                    {{ (attendance_summary.total_classes or 0) - (attendance_summary.present_classes or 0) }}
+                                </div>
+                                <small class="text-muted">Absent</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Monthly Trend -->
+                        <div class="mt-4">
+                            <h6 class="mb-2">This Month's Trend</h6>
+                            <div class="attendance-trend">
+                                {% for day in monthly_trend %}
+                                <div class="trend-day" title="{{ day.date }}: {{ day.percentage }}%">
+                                    <div class="trend-bar {% if day.percentage >= 80 %}trend-good{% elif day.percentage >= 60 %}trend-average{% else %}trend-poor{% endif %}"
+                                         style="height: {{ day.percentage }}%"></div>
+                                    <small>{{ day.day }}</small>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <div class="empty-icon">📊</div>
+                            <h3>No Data Available</h3>
+                            <p>Attendance data will appear here once available</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tomorrow's Schedule - Horizontal Timetable -->
+        <div class="content-card mt-4">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <span class="card-icon">⏰</span>
+                    Tomorrow's Schedule - Timetable View
+                </h2>
+            </div>
+            <div class="card-content">
+                {% if tomorrow_timetable %}
+                <div class="timetable-container">
+                    <div class="timetable-header">
+                        <div class="time-slot-header">Time</div>
+                        {% for time_slot in ['8:00-9:00', '9:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-1:00', '1:00-2:00', '2:00-3:00', '3:00-4:00'] %}
+                        <div class="time-header">{{ time_slot }}</div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="timetable-content">
+                        {% set time_slots = {
+                            '8:00-9:00': None,
+                            '9:00-10:00': None,
+                            '10:00-11:00': None,
+                            '11:00-12:00': None,
+                            '12:00-1:00': None,
+                            '1:00-2:00': None,
+                            '2:00-3:00': None,
+                            '3:00-4:00': None
+                        } %}
+                        
+                        {% for slot in tomorrow_timetable %}
+                            {% set _ = time_slots.update({slot.time_slot: slot}) %}
+                        {% endfor %}
+                        
+                        {% for time_range, slot in time_slots.items() %}
+                        <div class="timetable-slot {% if slot %}has-class{% else %}free-slot{% endif %}">
+                            {% if slot %}
+                            <div class="class-info">
+                                <div class="subject-name">{{ slot.subject_name }}</div>
+                                <div class="faculty-name">{{ slot.faculty_name if slot.faculty_name else 'TBA' }}</div>
+                                <div class="room-info">
+                                    <i class="fas fa-door-open"></i> {{ slot.classroom_name if slot.classroom_name else 'TBA' }}
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="free-period">Free Period</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-icon">📅</div>
+                    <h3>No Classes Tomorrow</h3>
+                    <p>Enjoy your day off!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .header-actions {
+            display: flex;
+            align-items: center;
+            margin-left: auto;
+        }
+        
+        /* Enhanced Today's Schedule Styles */
+        .present-row {
+            border-left: 4px solid #28a745;
+            background-color: rgba(40, 167, 69, 0.05);
+        }
+        
+        .absent-row {
+            border-left: 4px solid #dc3545;
+            background-color: rgba(220, 53, 69, 0.05);
+        }
+        
+        .pending-row {
+            border-left: 4px solid #ffc107;
+            background-color: rgba(255, 193, 7, 0.05);
+        }
+        
+        .subject-info {
+            line-height: 1.2;
+        }
+        
+        .subject-name {
+            font-weight: 600;
+        }
+        
+        .attendance-summary {
+            border: 1px solid #dee2e6;
+        }
+        
+        /* Events Styles */
+        .events-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .event-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 12px;
+            border-left: 4px solid #6c757d;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        
+        .event-high-priority {
+            border-left-color: #dc3545;
+            background: rgba(220, 53, 69, 0.05);
+        }
+        
+        .event-medium-priority {
+            border-left-color: #ffc107;
+            background: rgba(255, 193, 7, 0.05);
+        }
+        
+        .event-low-priority {
+            border-left-color: #28a745;
+            background: rgba(40, 167, 69, 0.05);
+        }
+        
+        .event-icon {
+            font-size: 1.2rem;
+            margin-right: 12px;
+            margin-top: 2px;
+        }
+        
+        .event-details {
+            flex: 1;
+        }
+        
+        .event-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .event-meta {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-bottom: 4px;
+        }
+        
+        .event-description {
+            font-size: 0.9rem;
+            color: #495057;
+        }
+        
+        .event-actions {
+            margin-left: 10px;
+        }
+        
+        .quick-actions {
+            border-top: 1px solid #dee2e6;
+            padding-top: 15px;
+        }
+        
+        /* Attendance Trend */
+        .attendance-trend {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            height: 100px;
+            padding: 10px 0;
+        }
+        
+        .trend-day {
+            flex: 1;
+            text-align: center;
+            margin: 0 2px;
+        }
+        
+        .trend-bar {
+            width: 100%;
+            background: #28a745;
+            border-radius: 2px 2px 0 0;
+            transition: all 0.3s ease;
+        }
+        
+        .trend-good { background: #28a745; }
+        .trend-average { background: #ffc107; }
+        .trend-poor { background: #dc3545; }
+        
+        .trend-day:hover .trend-bar {
+            opacity: 0.8;
+            transform: scaleY(1.1);
+        }
+        
+        .date-display {
+            font-weight: 600;
+            color: #6c757d;
+        }
+        
+        .card-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .mark-attendance-btn {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+        }
+
+        /* Timetable Styles */
+        .timetable-container {
+            background: var(--bg-card);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .timetable-header {
+            display: grid;
+            grid-template-columns: 120px repeat(8, 1fr);
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .time-slot-header, .time-header {
+            padding: 1rem 0.5rem;
+            text-align: center;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-right: 1px solid var(--border-color);
+        }
+
+        .time-slot-header {
+            background: var(--bg-primary);
+            color: white;
+        }
+
+        .timetable-content {
+            display: grid;
+            grid-template-columns: 120px repeat(8, 1fr);
+        }
+
+        .timetable-slot {
+            padding: 1rem 0.5rem;
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .timetable-slot.has-class {
+            background: linear-gradient(135deg, var(--bg-primary), var(--bg-tertiary));
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .timetable-slot.has-class:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .timetable-slot.free-slot {
+            background: var(--bg-secondary);
+            color: var(--text-muted);
+        }
+
+        .class-info .subject-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .class-info .faculty-name {
+            font-size: 0.8rem;
+            opacity: 0.9;
+            margin-bottom: 0.5rem;
+        }
+
+        .class-info .room-info {
+            font-size: 0.75rem;
+            opacity: 0.8;
+        }
+
+        .free-period {
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .timetable-header,
+            .timetable-content {
+                grid-template-columns: 100px repeat(4, 1fr);
+            }
+            
+            .timetable-header .time-header:nth-child(n+7),
+            .timetable-content .timetable-slot:nth-child(n+7) {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header-section {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .header-actions {
+                margin-left: 0;
+                margin-top: 1rem;
+                width: 100%;
+                justify-content: flex-end;
+            }
+            
+            .timetable-header,
+            .timetable-content {
+                grid-template-columns: 80px repeat(2, 1fr);
+            }
+            
+            .timetable-header .time-header:nth-child(n+5),
+            .timetable-content .timetable-slot:nth-child(n+5) {
+                display: none;
+            }
+            
+            .timetable-slot {
+                padding: 0.5rem 0.25rem;
+                min-height: 80px;
+            }
+            
+            .class-info .subject-name {
+                font-size: 0.8rem;
+            }
+            
+            .class-info .faculty-name,
+            .class-info .room-info {
+                font-size: 0.7rem;
+            }
+            
+            .event-item {
+                flex-direction: column;
+            }
+            
+            .event-actions {
+                margin-left: 0;
+                margin-top: 8px;
+                align-self: flex-start;
+            }
+        }
+    </style>
+    {% endblock %}
+
+    {% block scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    // QR Scanner Variables
+    let currentQrData = null;
+    let isCameraActive = false;
+    let qrScannerModal = null;
+    let qrCheckInterval = null;
+    
+    // Initialize when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, initializing scanner...');
+        
+        // Initialize QR Scanner Modal
+        const modalElement = document.getElementById('qrScannerModal');
+        if (modalElement) {
+            qrScannerModal = new bootstrap.Modal(modalElement);
+            console.log('QR Scanner Modal initialized');
+        } else {
+            console.error('QR Scanner Modal element not found');
+        }
+        
+        // Set up scan attendance button
+        const scanBtn = document.getElementById('scan-attendance-btn');
+        if (scanBtn) {
+            scanBtn.addEventListener('click', function() {
+                console.log('Scan button clicked');
+                openQrScanner();
+            });
+        }
+        
+        // Set up modal events
+        if (modalElement) {
+            modalElement.addEventListener('hidden.bs.modal', function() {
+                console.log('Modal closed, cleaning up...');
+                stopCamera();
+            });
+            
+            modalElement.addEventListener('shown.bs.modal', function() {
+                console.log('Modal shown');
+                startCamera();
+            });
+        }
+        
+        // Set up camera control buttons
+        document.getElementById('start-camera-btn').addEventListener('click', startCamera);
+        document.getElementById('stop-camera-btn').addEventListener('click', stopCamera);
+        document.getElementById('scan-qr-btn').addEventListener('click', scanQRCode);
+        document.getElementById('capture-face-btn').addEventListener('click', captureFaceForVerification);
+    });
+
+    // QR Scanner Functions
+    function openQrScanner() {
+        console.log('Opening QR scanner...');
+        
+        // Reset modal state
+        document.getElementById('qr-section').style.display = 'block';
+        document.getElementById('face-section').style.display = 'none';
+        document.getElementById('qr-result').innerHTML = '';
+        document.getElementById('verification-result').innerHTML = '';
+        currentQrData = null;
+        
+        // Show modal
+        if (qrScannerModal) {
+            qrScannerModal.show();
+        }
+    }
+
+    async function startCamera() {
+        try {
+            const response = await fetch('/start_camera');
+            const data = await response.json();
+            
+            if (data.success) {
+                isCameraActive = true;
+                const timestamp = new Date().getTime();
+                document.getElementById('video-stream').src = "{{ url_for('video_feed') }}?t=" + timestamp;
+                document.getElementById('face-stream').src = "{{ url_for('video_feed') }}?t=" + timestamp;
+                
+                // Update status indicator
+                document.getElementById('qr-indicator').innerHTML = '<i class="fas fa-camera me-1"></i>Camera Active';
+                document.getElementById('qr-indicator').className = 'badge bg-success fs-6';
+                
+                showAlert('Camera started successfully!', 'success');
+                
+                // Start continuous QR detection like in your sample
+                startQRDetection();
+            } else {
+                showAlert('Failed to start camera: ' + data.message, 'danger');
+            }
+        } catch (error) {
+            console.error('Error starting camera:', error);
+            showAlert('Error starting camera: ' + error.message, 'danger');
+        }
+    }
+
+    async function stopCamera() {
+        try {
+            const response = await fetch('/stop_camera');
+            const data = await response.json();
+            
+            if (data.success) {
+                isCameraActive = false;
+                document.getElementById('video-stream').src = '';
+                document.getElementById('face-stream').src = '';
+                
+                // Update status indicator
+                document.getElementById('qr-indicator').innerHTML = '<i class="fas fa-camera-off me-1"></i>Camera Off';
+                document.getElementById('qr-indicator').className = 'badge bg-secondary fs-6';
+                
+                showAlert('Camera stopped successfully!', 'success');
+                
+                // Stop QR detection
+                stopQRDetection();
+            }
+        } catch (error) {
+            console.error('Error stopping camera:', error);
+        }
+    }
+
+    function startQRDetection() {
+        // Update status indicator
+        document.getElementById('qr-indicator').innerHTML = '<i class="fas fa-search me-1"></i>Scanning for QR Code...';
+        document.getElementById('qr-indicator').className = 'badge bg-warning fs-6';
+        
+        // Check for QR codes every second
+        qrCheckInterval = setInterval(checkForQRCode, 1000);
+    }
+
+    function stopQRDetection() {
+        if (qrCheckInterval) {
+            clearInterval(qrCheckInterval);
+            qrCheckInterval = null;
+        }
+    }
+
+    async function checkForQRCode() {
+        if (!isCameraActive) return;
+        
+        try {
+            const response = await fetch('/capture_frame', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.qr_detected) {
+                // Update indicator to show QR detected
+                document.getElementById('qr-indicator').innerHTML = '<i class="fas fa-check-circle me-1"></i>QR Code Detected!';
+                document.getElementById('qr-indicator').className = 'badge bg-success fs-6';
+                
+                // Stop continuous detection
+                stopQRDetection();
+                
+                // Auto-process the QR code
+                await processDetectedQR(data);
+            }
+
+        } catch (error) {
+            console.error('QR checking error:', error);
+        }
+    }
+
+    async function scanQRCode() {
+        if (!isCameraActive) {
+            showAlert('Please start the camera first.', 'warning');
+            return;
+        }
+
+        const scanBtn = document.getElementById('scan-qr-btn');
+        const resultDiv = document.getElementById('qr-result');
+        
+        scanBtn.disabled = true;
+        scanBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Scanning...';
+        resultDiv.innerHTML = '<div class="alert alert-info">Scanning for QR code... Please hold steady.</div>';
+
+        try {
+            const response = await fetch('/capture_frame', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.qr_detected) {
+                await processDetectedQR(data);
+            } else {
+                resultDiv.innerHTML = '<div class="alert alert-warning">No QR code detected. Please ensure the QR code is clearly visible and try again.</div>';
+            }
+
+        } catch (error) {
+            console.error('QR scanning error:', error);
+            resultDiv.innerHTML = '<div class="alert alert-danger">Error scanning QR code. Please try again.</div>';
+        } finally {
+            scanBtn.disabled = false;
+            scanBtn.innerHTML = '<i class="fas fa-qrcode me-2"></i>Scan QR Code';
+        }
+    }
+
+    async function processDetectedQR(data) {
+        const resultDiv = document.getElementById('qr-result');
+        
+        // Check for expired QR code
+        if (data.expired) {
+            resultDiv.innerHTML = '<div class="alert alert-warning">QR code has expired. Please ask your faculty for a new one.</div>';
+            setTimeout(startQRDetection, 3000);
+            return;
+        }
+        
+        // Check for invalid format
+        if (data.invalid_format) {
+            resultDiv.innerHTML = '<div class="alert alert-danger">Invalid QR code format. Please use a valid attendance QR code.</div>';
+            setTimeout(startQRDetection, 3000);
+            return;
+        }
+        
+        // Validate QR data structure
+        if (!data.qr_data || data.qr_data.type !== 'attendance' || !data.qr_data.faculty_id || 
+            !data.qr_data.batch_id || !data.qr_data.subject_id) {
+            resultDiv.innerHTML = '<div class="alert alert-danger">Invalid QR code format.</div>';
+            setTimeout(startQRDetection, 3000);
+            return;
+        }
+
+        // Check expiry
+        if (data.qr_data.expiry && Date.now() > data.qr_data.expiry) {
+            resultDiv.innerHTML = '<div class="alert alert-warning">QR code has expired. Please ask your faculty for a new one.</div>';
+            setTimeout(startQRDetection, 3000);
+            return;
+        }
+
+        // Valid QR code detected
+        resultDiv.innerHTML = '<div class="alert alert-success">QR Code validated! Proceed to face verification.</div>';
+        currentQrData = data.qr_data;
+
+        // Show session info
+        document.getElementById('session-info').innerHTML = 
+            `Subject: <strong>${data.qr_data.subject_id}</strong> | Batch: <strong>${data.qr_data.batch_id}</strong>`;
+
+        // Show face verification section
+        document.getElementById('qr-section').style.display = 'none';
+        document.getElementById('face-section').style.display = 'block';
+    }
+
+    async function captureFaceForVerification() {
+        if (!isCameraActive) {
+            showAlert('Camera is not active. Please start the camera first.', 'warning');
+            return;
+        }
+
+        const captureBtn = document.getElementById('capture-face-btn');
+        const resultDiv = document.getElementById('verification-result');
+        
+        captureBtn.disabled = true;
+        captureBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Verifying...';
+        resultDiv.innerHTML = '<div class="alert alert-info">Capturing face image and verifying... Please look directly at the camera.</div>';
+
+        try {
+            // Capture frame for face verification
+            const response = await fetch('/capture_face_verification', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    qr_data: currentQrData,
+                    student_id: '{{ session.get("student_id") }}'
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <h5>Attendance Marked Successfully!</h5>
+                        <p>${data.message}</p>
+                        <p><strong>Subject:</strong> ${data.subject_name}</p>
+                        <p><strong>Batch:</strong> ${data.batch_name}</p>
+                        <p><strong>Time:</strong> ${data.attendance_time}</p>
+                        <p><strong>Face Confidence:</strong> ${data.confidence_score}%</p>
+                    </div>
+                `;
+
+                // Stop camera after successful verification
+                await stopCamera();
+
+                // Close modal and refresh page after 3 seconds
+                setTimeout(() => {
+                    if (qrScannerModal) {
+                        qrScannerModal.hide();
+                    }
+                    window.location.reload();
+                }, 3000);
+
+            } else {
+                resultDiv.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+                captureBtn.disabled = false;
+                captureBtn.innerHTML = '<i class="fas fa-user-check me-2"></i>Try Again';
+            }
+
+        } catch (error) {
+            console.error('Face verification error:', error);
+            resultDiv.innerHTML = `<div class="alert alert-danger">Error during face verification: ${error.message}</div>`;
+            captureBtn.disabled = false;
+            captureBtn.innerHTML = '<i class="fas fa-user-check me-2"></i>Try Again';
+        }
+    }
+
+    function showAlert(message, type) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.querySelector('.modal-body').prepend(alertDiv);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentElement) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+
+    // Clean up when leaving page
+    window.addEventListener('beforeunload', function() {
+        if (isCameraActive) {
+            fetch('/stop_camera').catch(console.error);
+        }
+        if (qrCheckInterval) {
+            clearInterval(qrCheckInterval);
+        }
+    });
+    document.addEventListener('DOMContentLoaded', function() {
+            // Mark attendance button handlers
+            document.querySelectorAll('.mark-attendance-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const slotId = this.dataset.slotId;
+                    const subject = this.dataset.subject;
+                    
+                    // Show QR scanner modal for attendance marking
+                    const scanBtn = document.getElementById('scan-attendance-btn');
+                    if (scanBtn) {
+                        scanBtn.click();
+                    }
+                });
+            });
+            
+            // Auto-refresh attendance data every 5 minutes
+            setInterval(() => {
+                // You can implement auto-refresh logic here
+                console.log('Auto-refreshing attendance data...');
+            }, 300000); // 5 minutes
+        });
+</script>
+{% endblock %}

@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Calendar - Timetable System</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.10.1/main.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-title h1 {
+            color: #333;
+            font-size: 2.2rem;
+            margin-bottom: 5px;
+        }
+
+        .header-title p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .action-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .action-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .action-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #dee2e6;
+        }
+
+        .action-secondary:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+        }
+
+        .calendar-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        #calendar {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Custom FullCalendar styles */
+        .fc .fc-toolbar {
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .fc .fc-toolbar-title {
+            font-size: 1.8rem;
+            color: #333;
+            font-weight: 700;
+        }
+
+        .fc .fc-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 6px;
+            padding: 10px 15px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .fc .fc-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+        }
+
+        .fc .fc-button-primary:not(:disabled).fc-button-active {
+            background: linear-gradient(135deg, #5a6fd8, #6a4190);
+        }
+
+        .fc-event {
+            border: none;
+            border-radius: 6px;
+            padding: 5px 8px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .fc-event.exam-event {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            border-left: 4px solid #ff6b7a;
+        }
+
+        .fc-daygrid-event-dot {
+            display: none;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .legend-exam {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.4rem;
+        }
+
+        .close {
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+
+        .modal-body {
+            padding: 25px;
+        }
+
+        .event-detail {
+            margin-bottom: 15px;
+        }
+
+        .event-detail label {
+            font-weight: 600;
+            color: #333;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .event-detail span {
+            color: #666;
+            display: block;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .no-events {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .no-events i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: #ddd;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .header-actions {
+                justify-content: center;
+            }
+
+            .fc .fc-toolbar {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .fc .fc-toolbar-title {
+                font-size: 1.4rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-title">
+                <h1><i class="fas fa-calendar-alt"></i> Exam Calendar</h1>
+                <p>View all your scheduled exams in calendar format</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ url_for('exams.exams_list') }}" class="action-btn action-secondary">
+                    <i class="fas fa-list"></i> List View
+                </a>
+                <a href="{{ url_for('exams.create_exam') }}" class="action-btn action-primary">
+                    <i class="fas fa-plus"></i> Schedule Exam
+                </a>
+            </div>
+        </div>
+
+        <div class="calendar-container">
+            <div id="calendar"></div>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color legend-exam"></div>
+                    <span>Exam Events</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Details Modal -->
+    <div id="eventModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Exam Details</h3>
+                <button class="close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="modalContent">
+                    <div class="event-detail">
+                        <label>Exam Name:</label>
+                        <span id="modalExamName">-</span>
+                    </div>
+                    <div class="event-detail">
+                        <label>Subject:</label>
+                        <span id="modalSubject">-</span>
+                    </div>
+                    <div class="event-detail">
+                        <label>Department:</label>
+                        <span id="modalDepartment">-</span>
+                    </div>
+                    <div class="event-detail">
+                        <label>Date & Time:</label>
+                        <span id="modalDateTime">-</span>
+                    </div>
+                    <div class="event-detail">
+                        <label>Classroom:</label>
+                        <span id="modalClassroom">-</span>
+                    </div>
+                    <div class="event-detail">
+                        <label>Duration:</label>
+                        <span id="modalDuration">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/5.10.1/main.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
+                },
+                themeSystem: 'standard',
+                events: {
+                    url: '/api/exams/calendar',
+                    failure: function() {
+                        alert('There was an error while fetching exams!');
+                    }
+                },
+                eventClick: function(info) {
+                    var event = info.event;
+                    
+                    // Populate modal with event details
+                    document.getElementById('modalTitle').textContent = event.title;
+                    document.getElementById('modalExamName').textContent = event.title.split(' - ')[0] || event.title;
+                    document.getElementById('modalSubject').textContent = event.title.split(' - ')[1] || 'N/A';
+                    document.getElementById('modalDepartment').textContent = event.extendedProps.department || 'N/A';
+                    document.getElementById('modalClassroom').textContent = event.extendedProps.classroom || 'N/A';
+                    
+                    // Format date and time
+                    var start = moment(event.start);
+                    var end = moment(event.end);
+                    document.getElementById('modalDateTime').textContent = 
+                        start.format('MMMM Do YYYY, h:mm A') + ' - ' + end.format('h:mm A');
+                    
+                    // Calculate duration
+                    var duration = moment.duration(end.diff(start));
+                    var hours = duration.hours();
+                    var minutes = duration.minutes();
+                    document.getElementById('modalDuration').textContent = 
+                        hours + ' hours ' + minutes + ' minutes';
+                    
+                    // Show modal
+                    document.getElementById('eventModal').style.display = 'block';
+                },
+                eventContent: function(arg) {
+                    return {
+                        html: '<div class="exam-event-content">' +
+                              '<i class="fas fa-file-alt" style="margin-right: 5px;"></i>' +
+                              '<strong>' + arg.event.title + '</strong>' +
+                              '</div>'
+                    };
+                },
+                eventClassNames: function(arg) {
+                    return ['exam-event'];
+                },
+                views: {
+                    dayGridMonth: {
+                        eventMaxStack: 2
+                    }
+                },
+                eventDisplay: 'block',
+                height: 'auto',
+                navLinks: true,
+                editable: false,
+                selectable: false,
+                nowIndicator: true,
+                dayMaxEvents: true,
+                businessHours: {
+                    daysOfWeek: [1, 2, 3, 4, 5],
+                    startTime: '08:00',
+                    endTime: '18:00'
+                }
+            });
+
+            calendar.render();
+
+            // Modal functionality
+            var modal = document.getElementById('eventModal');
+            var closeBtn = document.getElementsByClassName('close')[0];
+
+            closeBtn.onclick = function() {
+                modal.style.display = 'none';
+            }
+
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = 'none';
+                }
+            }
+
+            // Keyboard support
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    modal.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

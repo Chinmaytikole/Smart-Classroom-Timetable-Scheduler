@@ -25,36 +25,136 @@ class GeneticTimetable:
         self.max_classes_per_day = constraints.get('max_classes_per_day', 6)
         self.max_hours_per_faculty = constraints.get('max_hours_per_faculty', 8)
         
+        # Identify theory and lab subjects
+        self.theory_subjects = [s for s in subjects if s.get('subject_type') == 'THEORY']
+        self.lab_subjects = [s for s in subjects if s.get('subject_type') == 'LAB']
+        
     def initialize_population(self, size):
         population = []
         for _ in range(size):
             timetable = {}
-            for batch in self.batches:
-                batch_id = batch['id']
-                timetable[batch_id] = {}
-                for day in self.days:
-                    timetable[batch_id][day] = {}
-                    for time_slot in self.time_slots:
-                        # Skip lunch break
-                        if time_slot == self.lunch_break:
-                            timetable[batch_id][day][time_slot] = None
-                            continue
-                            
-                        # Randomly assign a subject, faculty, and classroom
-                        subject = random.choice(self.subjects)
-                        faculty_for_subject = self.get_faculty_for_subject(subject['id'])
-                        
-                        if faculty_for_subject:
-                            classroom = self.get_available_classroom(subject['subject_type'])
-                            timetable[batch_id][day][time_slot] = {
-                                'subject_id': subject['id'],
-                                'faculty_id': faculty_for_subject['id'],
-                                'classroom_id': classroom['id'] if classroom else None
-                            }
-                        else:
-                            timetable[batch_id][day][time_slot] = None
+            
+            # First schedule theory subjects synchronously across all batches
+            timetable = self.initialize_theory_slots()
+            
+            # Then fill remaining slots with lab subjects
+            timetable = self.fill_lab_slots(timetable)
+                
             population.append(timetable)
         return population
+    
+    def initialize_theory_slots(self):
+        """Initialize timetable with theory subjects scheduled at same time across batches"""
+        timetable = {}
+        
+        # Create empty timetable structure
+        for batch in self.batches:
+            batch_id = batch['id']
+            timetable[batch_id] = {}
+            for day in self.days:
+                timetable[batch_id][day] = {}
+                for time_slot in self.time_slots:
+                    if time_slot == self.lunch_break:
+                        timetable[batch_id][day][time_slot] = None
+                    else:
+                        timetable[batch_id][day][time_slot] = None
+        
+        # Schedule theory subjects synchronously
+        for theory_subject in self.theory_subjects:
+            required_classes = theory_subject.get('classes_per_week', 3)
+            
+            for _ in range(required_classes):
+                # Find a time slot that's available for all batches in this department
+                available_slot = self.find_available_theory_slot(timetable, theory_subject)
+                
+                if available_slot:
+                    day, time_slot = available_slot
+                    faculty_for_subject = self.get_faculty_for_subject(theory_subject['id'])
+                    classroom = self.get_available_classroom('THEORY')
+                    
+                    # Schedule this theory subject at the same time for all batches in the department
+                    for batch in self.batches:
+                        if batch.get('department_id') == theory_subject.get('department_id'):
+                            timetable[batch['id']][day][time_slot] = {
+                                'subject_id': theory_subject['id'],
+                                'faculty_id': faculty_for_subject['id'] if faculty_for_subject else None,
+                                'classroom_id': classroom['id'] if classroom else None
+                            }
+        
+        return timetable
+    
+    def find_available_theory_slot(self, timetable, theory_subject):
+        """Find a time slot available for all batches in the same department"""
+        # Get batches that need this theory subject
+        target_batches = [b for b in self.batches if b.get('department_id') == theory_subject.get('department_id')]
+        
+        available_slots = []
+        for day in self.days:
+            for time_slot in self.time_slots:
+                if time_slot == self.lunch_break:
+                    continue
+                
+                # Check if slot is available for all target batches
+                slot_available = True
+                for batch in target_batches:
+                    if timetable[batch['id']][day][time_slot] is not None:
+                        slot_available = False
+                        break
+                
+                if slot_available:
+                    available_slots.append((day, time_slot))
+        
+        return random.choice(available_slots) if available_slots else None
+    
+    def fill_lab_slots(self, timetable):
+        """Fill remaining slots with lab subjects independently for each batch"""
+        for batch in self.batches:
+            batch_id = batch['id']
+            batch_lab_subjects = [s for s in self.lab_subjects if s.get('department_id') == batch.get('department_id')]
+            
+            for lab_subject in batch_lab_subjects:
+                required_classes = lab_subject.get('classes_per_week', 3)
+                scheduled_classes = self.count_scheduled_classes(timetable, batch_id, lab_subject['id'])
+                
+                while scheduled_classes < required_classes:
+                    # Find available slot for this batch
+                    available_slot = self.find_available_lab_slot(timetable, batch_id)
+                    if not available_slot:
+                        break
+                    
+                    day, time_slot = available_slot
+                    faculty_for_subject = self.get_faculty_for_subject(lab_subject['id'])
+                    classroom = self.get_available_classroom('LAB')
+                    
+                    timetable[batch_id][day][time_slot] = {
+                        'subject_id': lab_subject['id'],
+                        'faculty_id': faculty_for_subject['id'] if faculty_for_subject else None,
+                        'classroom_id': classroom['id'] if classroom else None
+                    }
+                    scheduled_classes += 1
+        
+        return timetable
+    
+    def find_available_lab_slot(self, timetable, batch_id):
+        """Find available slot for lab subject in a specific batch"""
+        available_slots = []
+        for day in self.days:
+            for time_slot in self.time_slots:
+                if (time_slot != self.lunch_break and 
+                    timetable[batch_id][day][time_slot] is None):
+                    available_slots.append((day, time_slot))
+        
+        return random.choice(available_slots) if available_slots else None
+    
+    def count_scheduled_classes(self, timetable, batch_id, subject_id):
+        """Count how many times a subject is scheduled for a batch"""
+        count = 0
+        for day in self.days:
+            for time_slot in self.time_slots:
+                slot_data = timetable[batch_id][day].get(time_slot)
+                if slot_data and slot_data['subject_id'] == subject_id:
+                    count += 1
+        return count
     
     def get_faculty_for_subject(self, subject_id):
         # Find faculty who can teach this subject
@@ -112,7 +212,45 @@ class GeneticTimetable:
         lunch_break_violations = self.check_lunch_breaks(timetable)
         fitness_score -= lunch_break_violations * 15
         
+        # Check for theory synchronization violations (NEW)
+        theory_sync_violations = self.check_theory_synchronization(timetable)
+        fitness_score -= theory_sync_violations * 100  # High penalty for sync violations
+        
         return max(0, fitness_score)
+    
+    def check_theory_synchronization(self, timetable):
+        """Check if theory subjects are scheduled at same time across batches"""
+        violations = 0
+        
+        # Group theory subjects by department
+        department_theory_slots = {}
+        
+        # Collect all theory subject scheduling information
+        for batch_id, schedule in timetable.items():
+            batch = self.batch_map[batch_id]
+            dept_id = batch.get('department_id')
+            
+            if dept_id not in department_theory_slots:
+                department_theory_slots[dept_id] = {}
+            
+            for day, time_slots in schedule.items():
+                for time_slot, slot_data in time_slots.items():
+                    if slot_data and slot_data['subject_id']:
+                        subject = self.subject_map.get(slot_data['subject_id'])
+                        if subject and subject['subject_type'] == 'THEORY':
+                            key = (day, time_slot)
+                            if key not in department_theory_slots[dept_id]:
+                                department_theory_slots[dept_id][key] = set()
+                            department_theory_slots[dept_id][key].add(slot_data['subject_id'])
+        
+        # Check for synchronization violations
+        for dept_id, time_slots in department_theory_slots.items():
+            for (day, time_slot), subject_ids in time_slots.items():
+                # If multiple theory subjects are scheduled at same time in same department, it's a violation
+                if len(subject_ids) > 1:
+                    violations += len(subject_ids) - 1
+        
+        return violations
     
     def check_faculty_conflicts(self, timetable):
         conflicts = 0
@@ -228,21 +366,39 @@ class GeneticTimetable:
     
     def mutate(self, timetable):
         mutated = deepcopy(timetable)
-        batch_id = random.choice(list(mutated.keys()))
-        day = random.choice(self.days)
-        time_slot = random.choice([ts for ts in self.time_slots if ts != self.lunch_break])
         
-        if random.random() < 0.5:  # 50% chance to change subject
-            subject = random.choice(self.subjects)
-            faculty_for_subject = self.get_faculty_for_subject(subject['id'])
+        # Don't mutate theory subjects to maintain synchronization
+        # Only mutate lab subjects
+        lab_slots = []
+        for batch_id in mutated:
+            for day in self.days:
+                for time_slot in self.time_slots:
+                    if time_slot == self.lunch_break:
+                        continue
+                    slot_data = mutated[batch_id][day][time_slot]
+                    if slot_data:
+                        subject = self.subject_map.get(slot_data['subject_id'])
+                        if subject and subject['subject_type'] == 'LAB':
+                            lab_slots.append((batch_id, day, time_slot))
+        
+        if not lab_slots:
+            return mutated
             
-            if faculty_for_subject:
-                classroom = self.get_available_classroom(subject['subject_type'])
-                mutated[batch_id][day][time_slot] = {
-                    'subject_id': subject['id'],
-                    'faculty_id': faculty_for_subject['id'],
-                    'classroom_id': classroom['id'] if classroom else None
-                }
+        batch_id, day, time_slot = random.choice(lab_slots)
+        
+        if random.random() < 0.5:  # 50% chance to change lab subject
+            batch = self.batch_map[batch_id]
+            lab_subjects = [s for s in self.lab_subjects if s.get('department_id') == batch.get('department_id')]
+            if lab_subjects:
+                new_subject = random.choice(lab_subjects)
+                faculty_for_subject = self.get_faculty_for_subject(new_subject['id'])
+                if faculty_for_subject:
+                    classroom = self.get_available_classroom('LAB')
+                    mutated[batch_id][day][time_slot] = {
+                        'subject_id': new_subject['id'],
+                        'faculty_id': faculty_for_subject['id'],
+                        'classroom_id': classroom['id'] if classroom else None
+                    }
         else:  # 50% chance to clear the slot
             mutated[batch_id][day][time_slot] = None
             
@@ -278,8 +434,7 @@ class GeneticTimetable:
                 parent2 = selected_parents[(i + 1) % population_size]
                 
                 # Crossover
-                child1 = self.crossover(parent1, parent2)
-                child2 = self.crossover(parent2, parent1)
+                child1, child2 = self.crossover(parent1, parent2)
                 
                 # Mutation
                 if random.random() < mutation_rate:
@@ -297,15 +452,19 @@ class GeneticTimetable:
                 
         return best_timetable, best_fitness
 
-# genetic_algorithm.py
-import random
-import numpy as np
-from copy import deepcopy
-import sqlite3
-from datetime import datetime
-
+# Enhanced version with same class name but different functionality
 class EnhancedGeneticTimetable(GeneticTimetable):
     def __init__(self, subjects, faculty, classrooms, batches, constraints):
+        # Convert sqlite3.Row objects to dictionaries if needed
+        if subjects and hasattr(subjects[0], '_fields'):  # If it's sqlite3.Row
+            subjects = [dict(subj) for subj in subjects]
+        if faculty and hasattr(faculty[0], '_fields'):
+            faculty = [dict(fac) for fac in faculty]
+        if classrooms and hasattr(classrooms[0], '_fields'):
+            classrooms = [dict(room) for room in classrooms]
+        if batches and hasattr(batches[0], '_fields'):
+            batches = [dict(batch) for batch in batches]
+            
         super().__init__(subjects, faculty, classrooms, batches, constraints)
         self.population_size = 200
         self.generations = 1000
@@ -349,12 +508,14 @@ class EnhancedGeneticTimetable(GeneticTimetable):
         max_classes_violations = self.check_max_classes_per_day(timetable) * 35
         fixed_slots_violations = self.check_fixed_slots(timetable) * 60
         faculty_availability_violations = self.check_faculty_availability(timetable) * 25
+        theory_sync_violations = self.check_theory_synchronization(timetable) * 100  # High penalty for sync violations
         
         total_violations = (faculty_conflicts + classroom_conflicts + 
                           workload_violations + time_preference_violations +
                           consecutive_class_violations + lunch_break_violations +
                           subject_distribution_violations + max_classes_violations +
-                          fixed_slots_violations + faculty_availability_violations)
+                          fixed_slots_violations + faculty_availability_violations +
+                          theory_sync_violations)
         
         fitness_score = max(0, fitness_score - total_violations)
         
@@ -450,175 +611,6 @@ class EnhancedGeneticTimetable(GeneticTimetable):
         
         return violations
     
-    def initialize_population(self, size):
-        """Initialize population with fixed slots already assigned"""
-        population = []
-        
-        for _ in range(size):
-            timetable = {}
-            
-            # Initialize empty timetable structure
-            for batch in self.batches:
-                batch_id = batch['id']
-                timetable[batch_id] = {}
-                for day in self.days:
-                    timetable[batch_id][day] = {}
-                    for time_slot in self.time_slots:
-                        if time_slot == self.lunch_break:
-                            timetable[batch_id][day][time_slot] = None
-                        else:
-                            timetable[batch_id][day][time_slot] = None
-            
-            # Assign fixed slots first
-            for fixed_slot in self.fixed_slots:
-                batch_id = fixed_slot['batch_id']
-                day = fixed_slot['day']
-                time_slot = fixed_slot['time_slot']
-                
-                if (batch_id in timetable and day in timetable[batch_id] and 
-                    time_slot in timetable[batch_id][day]):
-                    
-                    timetable[batch_id][day][time_slot] = {
-                        'subject_id': fixed_slot['subject_id'],
-                        'faculty_id': fixed_slot.get('faculty_id'),
-                        'classroom_id': fixed_slot.get('classroom_id')
-                    }
-            
-            # Fill remaining slots
-            for batch in self.batches:
-                batch_id = batch['id']
-                
-                # Get subjects for this batch
-                batch_subjects = [s for s in self.subjects if s.get('department_id') == batch.get('department_id')]
-                
-                for day in self.days:
-                    for time_slot in self.time_slots:
-                        # Skip if already filled with fixed slot or lunch break
-                        if (timetable[batch_id][day][time_slot] is not None or 
-                            time_slot == self.lunch_break):
-                            continue
-                        
-                        # Try to assign a subject that hasn't reached its weekly limit
-                        available_subjects = []
-                        for subject in batch_subjects:
-                            # Count how many times this subject is already scheduled this week
-                            weekly_count = self.count_subject_weekly(timetable, batch_id, subject['id'])
-                            if weekly_count < subject.get('classes_per_week', 3):
-                                available_subjects.append(subject)
-                        
-                        if available_subjects:
-                            subject = random.choice(available_subjects)
-                            faculty_for_subject = self.get_faculty_for_subject(subject['id'])
-                            
-                            if faculty_for_subject:
-                                classroom = self.get_available_classroom(subject['subject_type'])
-                                timetable[batch_id][day][time_slot] = {
-                                    'subject_id': subject['id'],
-                                    'faculty_id': faculty_for_subject['id'],
-                                    'classroom_id': classroom['id'] if classroom else None
-                                }
-            
-            population.append(timetable)
-        
-        return population
-    
-    def count_subject_weekly(self, timetable, batch_id, subject_id):
-        """Count how many times a subject is scheduled in a week for a batch"""
-        count = 0
-        if batch_id in timetable:
-            for day in self.days:
-                for time_slot in self.time_slots:
-                    slot_data = timetable[batch_id][day].get(time_slot)
-                    if slot_data and slot_data['subject_id'] == subject_id:
-                        count += 1
-        return count
-    
-    def mutate(self, timetable):
-        """Enhanced mutation that respects constraints"""
-        mutated = deepcopy(timetable)
-        
-        # Don't mutate fixed slots
-        non_fixed_slots = []
-        for batch_id in mutated:
-            for day in self.days:
-                for time_slot in self.time_slots:
-                    if (time_slot != self.lunch_break and 
-                        not self.is_fixed_slot(batch_id, day, time_slot)):
-                        non_fixed_slots.append((batch_id, day, time_slot))
-        
-        if not non_fixed_slots:
-            return mutated
-        
-        # Select a random non-fixed slot to mutate
-        batch_id, day, time_slot = random.choice(non_fixed_slots)
-        
-        if random.random() < 0.7:  # 70% chance to change subject
-            # Get current subject and find alternatives
-            current_slot = mutated[batch_id][day][time_slot]
-            current_subject_id = current_slot['subject_id'] if current_slot else None
-            
-            # Find subjects that haven't reached their weekly limit
-            available_subjects = []
-            for subject in self.subjects:
-                if subject.get('department_id') == self.batch_map[batch_id].get('department_id'):
-                    weekly_count = self.count_subject_weekly(mutated, batch_id, subject['id'])
-                    if weekly_count < subject.get('classes_per_week', 3):
-                        available_subjects.append(subject)
-            
-            if available_subjects:
-                new_subject = random.choice(available_subjects)
-                faculty_for_subject = self.get_faculty_for_subject(new_subject['id'])
-                
-                if faculty_for_subject:
-                    classroom = self.get_available_classroom(new_subject['subject_type'])
-                    mutated[batch_id][day][time_slot] = {
-                        'subject_id': new_subject['id'],
-                        'faculty_id': faculty_for_subject['id'],
-                        'classroom_id': classroom['id'] if classroom else None
-                    }
-        else:  # 30% chance to clear the slot
-            mutated[batch_id][day][time_slot] = None
-            
-        return mutated
-    
-    def is_fixed_slot(self, batch_id, day, time_slot):
-        """Check if a slot is fixed"""
-        for fixed_slot in self.fixed_slots:
-            if (fixed_slot['batch_id'] == batch_id and 
-                fixed_slot['day'] == day and 
-                fixed_slot['time_slot'] == time_slot):
-                return True
-        return False
-    
-    # ... (keep all existing code until the run method)
-    def crossover(self, parent1, parent2):
-        """Enhanced crossover that creates two children"""
-        # Create two children
-        child1 = deepcopy(parent1)
-        child2 = deepcopy(parent2)
-        
-        # Single-point crossover for both children
-        crossover_point = random.randint(1, len(self.days) - 1)
-        crossover_days = self.days[crossover_point:]
-        
-        # First child: parent1 with some days from parent2
-        for batch_id in parent2:
-            if batch_id not in child1:
-                child1[batch_id] = {}
-            for day in crossover_days:
-                if day in parent2[batch_id]:
-                    child1[batch_id][day] = deepcopy(parent2[batch_id][day])
-        
-        # Second child: parent2 with some days from parent1
-        for batch_id in parent1:
-            if batch_id not in child2:
-                child2[batch_id] = {}
-            for day in crossover_days:
-                if day in parent1[batch_id]:
-                    child2[batch_id][day] = deepcopy(parent1[batch_id][day])
-                    
-        return child1, child2
-
     def run(self):
         """Run the enhanced genetic algorithm"""
         population = self.initialize_population(self.population_size)
@@ -646,7 +638,7 @@ class EnhancedGeneticTimetable(GeneticTimetable):
                 parent1 = self.tournament_selection(population, fitness_scores)
                 parent2 = self.tournament_selection(population, fitness_scores)
                 
-                # Crossover - this now returns two children
+                # Crossover
                 if random.random() < self.crossover_rate:
                     child1, child2 = self.crossover(parent1, parent2)
                 else:
@@ -667,6 +659,12 @@ class EnhancedGeneticTimetable(GeneticTimetable):
                 print(f"Generation {generation}: Best Fitness = {best_fitness}")
                 
         return best_timetable, best_fitness
+
+    def tournament_selection(self, population, fitness_scores, tournament_size=3):
+        """Tournament selection"""
+        tournament_indices = random.sample(range(len(population)), tournament_size)
+        tournament = [(population[i], fitness_scores[i]) for i in tournament_indices]
+        return max(tournament, key=lambda x: x[1])[0]
 
     def tournament_selection(self, population, fitness_scores, tournament_size=3):
         """Tournament selection"""

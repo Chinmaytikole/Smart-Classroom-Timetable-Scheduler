@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Edit My Profile - Intelligent Timetable System{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="header-content">
+            <div>
+                <h1 class="main-title">
+                    <i class="fas fa-user-edit title-icon"></i> Edit My Profile
+                </h1>
+                <p class="welcome-text">Update your personal information</p>
+            </div>
+            <a href="{{ url_for('teacher_dashboard') }}" class="action-btn action-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Profile
+            </a>
+        </div>
+        <div class="header-glow"></div>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Profile Edit Form -->
+    <div class="content-card">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-user card-icon"></i> Personal Information
+            </h5>
+        </div>
+        <div class="card-content">
+            <form method="POST" action="{{ url_for('users.update_faculty_profile') }}">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Username *</label>
+                        <input type="text" class="form-control" name="username" 
+                               value="{{ user.username }}" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Full Name</label>
+                        <input type="text" class="form-control" name="full_name" 
+                               value="{{ user.full_name or '' }}">
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Employee ID</label>
+                        <input type="text" class="form-control" value="{{ user.employee_id }}" disabled>
+                        <small class="text-muted">Employee ID cannot be changed</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Department</label>
+                        <input type="text" class="form-control" value="{{ user.department_name or 'N/A' }}" disabled>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">New Password</label>
+                        <input type="password" class="form-control" name="password" 
+                               placeholder="Leave blank to keep current password">
+                        <small class="text-muted">Minimum 6 characters</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Role</label>
+                        <input type="text" class="form-control" value="Faculty" disabled>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <button type="submit" class="action-btn action-success">
+                        <i class="fas fa-save"></i> Update Profile
+                    </button>
+                    <a href="{{ url_for('users.faculty_profile') }}" class="action-btn action-secondary">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Read-only Information -->
+    <div class="content-card">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-info-circle card-icon"></i> Faculty Information
+            </h5>
+        </div>
+        <div class="card-content">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <strong>Email:</strong><br>
+                    <span class="text-muted">{{ user.email or 'N/A' }}</span>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <strong>Phone:</strong><br>
+                    <span class="text-muted">{{ user.phone or 'N/A' }}</span>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <strong>Designation:</strong><br>
+                    <span class="text-muted">{{ user.designation or 'N/A' }}</span>
+                </div>
+            </div>
+            <div class="mt-2">
+                <small class="text-muted">
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    Contact administrator to update faculty details like email, phone, or designation.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

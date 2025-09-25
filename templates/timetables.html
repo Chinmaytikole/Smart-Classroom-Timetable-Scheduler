@@ -13,7 +13,7 @@
                 </h1>
                 <p class="welcome-text">Manage and view all generated timetables</p>
             </div>
-            <a href="{{ url_for('generate_timetable') }}" class="action-btn">
+            <a href="{{ url_for('timetable.generate_timetable') }}" class="action-btn">
                 <i class="fas fa-plus"></i> Generate New Timetable
             </a>
         </div>
@@ -143,7 +143,7 @@
                                 <td class="table-cell">{{ timetable.created_at[:10] }}</td>
                                 <td class="table-cell">
                                     <div style="display: flex; gap: 0.5rem;">
-                                        <a href="{{ url_for('view_timetable', timetable_id=timetable.id) }}" class="action-btn action-blue">
+                                        <a href="{{ url_for('timetable.view_timetable',id=timetable.id) }}" class="action-btn action-blue">
                                             <i class="fas fa-eye"></i> View
                                         </a>
                                         <button class="action-btn action-cyan">
@@ -169,7 +169,7 @@
                     </div>
                     <h4>No Timetables Generated Yet</h4>
                     <p>Get started by generating your first timetable using our intelligent genetic algorithm system.</p>
-                    <a href="{{ url_for('generate_timetable') }}" class="action-btn action-green" style="margin-top: 1rem;">
+                    <a href="{{ url_for('timetable.generate_timetable') }}" class="action-btn action-green" style="margin-top: 1rem;">
                         <i class="fas fa-cog"></i> Generate First Timetable
                     </a>
                 </div>
@@ -186,7 +186,7 @@
             </div>
             <div class="card-content">
                 <div class="actions-grid">
-                    <a href="{{ url_for('generate_timetable') }}" class="action-item action-green">
+                    <a href="{{ url_for('timetable.generate_timetable') }}" class="action-item action-green">
                         <div class="action-icon">
                             <i class="fas fa-cog"></i>
                         </div>
@@ -440,7 +440,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Update form action
             const form = document.getElementById('deleteTimetableForm');
-            form.action = "{{ url_for('delete_timetable', timetable_id=0) }}".replace('0', timetableId);
+            form.action = "{{ url_for('timetable.delete_timetable', timetable_id=0) }}".replace('0', timetableId);
         });
     }
     

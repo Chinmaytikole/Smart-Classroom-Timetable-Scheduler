@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ timetable_info.name }} - Timetable View{% endblock %}
+{% block title %}{{ timetable.name }} - Timetable View{% endblock %}
 
 {% block content %}
 <div class="dashboard-container">
@@ -9,19 +9,19 @@
         <div class="header-content">
             <div>
                 <h1 class="main-title">
-                    <i class="fas fa-table title-icon"></i> {{ timetable_info.name }}
+                    <i class="fas fa-table title-icon"></i> {{ timetable.name }}
                 </h1>
                 <p class="welcome-text">
-                    {{ timetable_info.department_name }} - Semester {{ timetable_info.semester }}
-                    {% if timetable_info.fitness_score %}
-                        <span class="fitness-badge fitness-{{ 'high' if timetable_info.fitness_score > 800 else 'medium' if timetable_info.fitness_score > 600 else 'low' }} ms-2">
-                            Fitness: {{ "%.1f"|format(timetable_info.fitness_score) }}
+                    {{ timetable.department_name }} - Semester {{ timetable.semester }}
+                    {% if timetable.fitness_score %}
+                        <span class="fitness-badge fitness-{{ 'high' if timetable.fitness_score > 800 else 'medium' if timetable.fitness_score > 600 else 'low' }} ms-2">
+                            Fitness: {{ "%.1f"|format(timetable.fitness_score) }}
                         </span>
                     {% endif %}
                 </p>
             </div>
             <div style="display: flex; gap: 0.75rem;">
-                <a href="{{ url_for('timetables') }}" class="action-btn">
+                <a href="{{ url_for('timetable.timetables') }}" class="action-btn">
                     <i class="fas fa-arrow-left"></i> Back to Timetables
                 </a>
                 <button class="action-btn action-blue" onclick="window.print()">
@@ -114,11 +114,11 @@
                     <h6>Algorithm Efficiency</h6>
                     <div class="progress mb-2">
                         <div class="progress-bar" role="progressbar" 
-                             style="width: {{ (timetable_info.fitness_score / 10)|round(1) if timetable_info.fitness_score else 92 }}%; background: linear-gradient(135deg, var(--accent-green), #22c55e);"
-                             aria-valuenow="{{ timetable_info.fitness_score if timetable_info.fitness_score else 92 }}" 
+                             style="width: {{ (timetable.fitness_score / 10)|round(1) if timetable.fitness_score else 92 }}%; background: linear-gradient(135deg, var(--accent-green), #22c55e);"
+                             aria-valuenow="{{ timetable.fitness_score if timetable.fitness_score else 92 }}" 
                              aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
-                    <small>{{ timetable_info.fitness_score if timetable_info.fitness_score else 92 }}% - Constraint Satisfaction Rate</small>
+                    <small>{{ timetable.fitness_score if timetable.fitness_score else 92 }}% - Constraint Satisfaction Rate</small>
                 </div>
                 <div class="col-md-6">
                     <h6>Resource Utilization</h6>
@@ -134,7 +134,7 @@
                     <div class="stat-content">
                         <div class="stat-info">
                             <div class="stat-label">Fitness Score</div>
-                            <div class="stat-value">{{ timetable_info.fitness_score if timetable_info.fitness_score else 'N/A' }}</div>
+                            <div class="stat-value">{{ timetable.fitness_score if timetable.fitness_score else 'N/A' }}</div>
                         </div>
                         <div class="stat-icon">
                             <i class="fas fa-chart-line"></i>
@@ -166,16 +166,16 @@
                     </div>
                 </div>
 
-                <div class="stat-card stat-{{ 'success' if timetable_info.fitness_score > 800 else 'warning' if timetable_info.fitness_score > 600 else 'danger' }}">
+                <div class="stat-card stat-{{ 'success' if timetable.fitness_score > 800 else 'warning' if timetable.fitness_score > 600 else 'danger' }}">
                     <div class="stat-content">
                         <div class="stat-info">
                             <div class="stat-label">Status</div>
                             <div class="stat-value">
-                                {{ 'Optimal' if timetable_info.fitness_score > 800 else 'Good' if timetable_info.fitness_score > 600 else 'Needs Review' }}
+                                {{ 'Optimal' if timetable.fitness_score > 800 else 'Good' if timetable.fitness_score > 600 else 'Needs Review' }}
                             </div>
                         </div>
                         <div class="stat-icon">
-                            <i class="fas fa-{{ 'check-circle' if timetable_info.fitness_score > 800 else 'exclamation-circle' if timetable_info.fitness_score > 600 else 'exclamation-triangle' }}"></i>
+                            <i class="fas fa-{{ 'check-circle' if timetable.fitness_score > 800 else 'exclamation-circle' if timetable.fitness_score > 600 else 'exclamation-triangle' }}"></i>
                         </div>
                     </div>
                 </div>

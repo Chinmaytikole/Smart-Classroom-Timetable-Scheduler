@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance - Intelligent Timetable System{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="header-content">
+            <div>
+                <h1 class="main-title">
+                    <i class="fas fa-check-circle title-icon"></i> Attendance Management
+                </h1>
+                <p class="welcome-text">Track and manage faculty attendance</p>
+            </div>
+            <a href="{{ url_for('attendance.attendance_reports') }}" class="action-btn action-cyan">
+                <i class="fas fa-chart-bar"></i> View Reports
+            </a>
+        </div>
+        <div class="header-glow"></div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="content-card mb-3">
+        <div class="card-content">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Date</label>
+                    <input type="date" class="form-control" name="date" value="{{ selected_date.isoformat() }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Faculty</label>
+                    <select class="form-select" name="faculty_id">
+                        <option value="">All Faculty</option>
+                        {% for faculty in faculty_list %}
+                        <option value="{{ faculty.id }}" {% if selected_faculty|int == faculty.id %}selected{% endif %}>
+                            {{ faculty.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Batch</label>
+                    <select class="form-select" name="batch_id">
+                        <option value="">All Batches</option>
+                        {% for batch in batches_list %}
+                        <option value="{{ batch.id }}" {% if selected_batch|int == batch.id %}selected{% endif %}>
+                            {{ batch.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="action-btn action-blue w-100">Apply Filters</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Attendance Summary -->
+    <div class="content-card mb-3">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-chart-pie card-icon"></i> Attendance Summary - {{ selected_date.strftime('%A, %B %d, %Y') }}
+            </h5>
+        </div>
+        <div class="card-content">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="stat-card stat-info">
+                        <div class="stat-content">
+                            <div class="stat-info">
+                                <div class="stat-label">Total Classes</div>
+                                <div class="stat-value">{{ slots|length }}</div>
+                            </div>
+                            <div class="stat-icon">
+                                <i class="fas fa-calendar-check"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card stat-success">
+                        <div class="stat-content">
+                            <div class="stat-info">
+                                <div class="stat-label">Present</div>
+                                <div class="stat-value">
+                                    {{ slots|selectattr('attendance_status', 'equalto', 'PRESENT')|list|length }}
+                                </div>
+                            </div>
+                            <div class="stat-icon">
+                                <i class="fas fa-user-check"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card stat-danger">
+                        <div class="stat-content">
+                            <div class="stat-info">
+                                <div class="stat-label">Absent</div>
+                                <div class="stat-value">
+                                    {{ slots|selectattr('attendance_status', 'equalto', 'ABSENT')|list|length }}
+                                </div>
+                            </div>
+                            <div class="stat-icon">
+                                <i class="fas fa-user-times"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card stat-warning">
+                        <div class="stat-content">
+                            <div class="stat-info">
+                                <div class="stat-label">Late</div>
+                                <div class="stat-value">
+                                    {{ slots|selectattr('attendance_status', 'equalto', 'LATE')|list|length }}
+                                </div>
+                            </div>
+                            <div class="stat-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Records -->
+    <div class="content-card">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-list card-icon"></i> Attendance Records
+            </h5>
+        </div>
+        <div class="card-content">
+            {% if slots %}
+            <div class="table-container">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>Time Slot</th>
+                            <th>Faculty</th>
+                            <th>Subject</th>
+                            <th>Batch</th>
+                            <th>Classroom</th>
+                            <th>Status</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for slot in slots %}
+                        <tr class="table-row">
+                            <td class="table-cell">
+                                <strong>{{ slot.time_slot }}</strong>
+                            </td>
+                            <td class="table-cell">{{ slot.faculty_name }}</td>
+                            <td class="table-cell">{{ slot.subject_name }}</td>
+                            <td class="table-cell">{{ slot.batch_name }}</td>
+                            <td class="table-cell">{{ slot.classroom_name }}</td>
+                            <td class="table-cell">
+                                <span class="badge bg-{% if slot.attendance_status == 'PRESENT' %}success{% elif slot.attendance_status == 'ABSENT' %}danger{% elif slot.attendance_status == 'LATE' %}warning{% else %}secondary{% endif %}">
+                                    {{ slot.attendance_status or 'NOT RECORDED' }}
+                                </span>
+                            </td>
+                            <td class="table-cell">
+                                {% if slot.attendance_notes %}
+                                <span class="text-muted">{{ slot.attendance_notes|truncate(20) }}</span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="table-cell">
+                                <button class="action-btn action-blue" data-bs-toggle="modal" 
+                                        data-bs-target="#attendanceModal" 
+                                        data-slot-id="{{ slot.id }}"
+                                        data-faculty-id="{{ slot.faculty_id }}"
+                                        data-batch-id="{{ slot.batch_id }}"
+                                        data-current-status="{{ slot.attendance_status or '' }}"
+                                        data-current-notes="{{ slot.attendance_notes or '' }}"
+                                        data-faculty-name="{{ slot.faculty_name }}"
+                                        data-subject-name="{{ slot.subject_name }}"
+                                        data-time-slot="{{ slot.time_slot }}">
+                                    <i class="fas fa-edit"></i> Record
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-calendar-times"></i>
+                </div>
+                <h4>No Classes Scheduled</h4>
+                <p>No classes are scheduled for {{ selected_date.strftime('%A, %B %d, %Y') }} with the current filters.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Attendance Modal -->
+<div class="modal fade" id="attendanceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Record Attendance</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="attendanceForm" method="POST" action="{{ url_for('attendance.record_attendance') }}">
+                <input type="hidden" name="slot_id" id="modalSlotId">
+                <input type="hidden" name="faculty_id" id="modalFacultyId">
+                <input type="hidden" name="batch_id" id="modalBatchId">
+                <input type="hidden" name="date" value="{{ selected_date.isoformat() }}">
+                
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <p><strong>Faculty:</strong> <span id="modalFacultyName"></span></p>
+                        <p><strong>Subject:</strong> <span id="modalSubjectName"></span></p>
+                        <p><strong>Time Slot:</strong> <span id="modalTimeSlot"></span></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Attendance Status *</label>
+                        <select class="form-select" name="status" id="modalStatus" required>
+                            <option value="">Select Status</option>
+                            <option value="PRESENT">Present</option>
+                            <option value="ABSENT">Absent</option>
+                            <option value="LATE">Late</option>
+                            <option value="CANCELLED">Cancelled</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" name="notes" id="modalNotes" rows="3" 
+                                  placeholder="Optional notes about the attendance"></textarea>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Attendance</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const attendanceModal = document.getElementById('attendanceModal');
+    
+    attendanceModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const slotId = button.getAttribute('data-slot-id');
+        const facultyId = button.getAttribute('data-faculty-id');
+        const batchId = button.getAttribute('data-batch-id');
+        const currentStatus = button.getAttribute('data-current-status');
+        const currentNotes = button.getAttribute('data-current-notes');
+        const facultyName = button.getAttribute('data-faculty-name');
+        const subjectName = button.getAttribute('data-subject-name');
+        const timeSlot = button.getAttribute('data-time-slot');
+        
+        document.getElementById('modalSlotId').value = slotId;
+        document.getElementById('modalFacultyId').value = facultyId;
+        document.getElementById('modalBatchId').value = batchId;
+        document.getElementById('modalFacultyName').textContent = facultyName;
+        document.getElementById('modalSubjectName').textContent = subjectName;
+        document.getElementById('modalTimeSlot').textContent = timeSlot;
+        
+        if (currentStatus) {
+            document.getElementById('modalStatus').value = currentStatus;
+        }
+        
+        if (currentNotes) {
+            document.getElementById('modalNotes').value = currentNotes;
+        }
+    });
+    
+    // Handle form submission
+    const attendanceForm = document.getElementById('attendanceForm');
+    
+    attendanceForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(attendanceForm);
+        
+        fetch(attendanceForm.action, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Close modal and reload page
+                const modal = bootstrap.Modal.getInstance(attendanceModal);
+                modal.hide();
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error.message);
+        });
+    });
+});
+</script>
+
+<style>
+.stat-card {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+}
+
+.stat-card .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.stat-card .stat-label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.stat-card .stat-icon {
+    font-size: 2rem;
+    opacity: 0.7;
+}
+
+.stat-info { border-left: 4px solid var(--accent-blue); }
+.stat-success { border-left: 4px solid var(--accent-green); }
+.stat-danger { border-left: 4px solid var(--accent-red); }
+.stat-warning { border-left: 4px solid var(--accent-orange); }
+</style>
+{% endblock %}

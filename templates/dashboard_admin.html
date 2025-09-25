@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Intelligent Timetable System{% endblock %}
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+{% endblock %}
+{% block content %}
+<div class="dashboard-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="header-content">
+            <h1 class="main-title">
+                <span class="title-icon">⚡</span>
+                <span class="title-text">Admin Dashboard</span>
+            </h1>
+            <div class="welcome-text">
+                Welcome back, <span class="user-name">{{ session.full_name or session.username }}</span>
+                <span class="badge bg-primary ms-2">Administrator</span>
+            </div>
+        </div>
+        <div class="header-glow"></div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+        <div class="stat-card stat-primary">
+            <div class="stat-content">
+                <div class="stat-info">
+                    <div class="stat-label">Departments</div>
+                    <div class="stat-value">{{ stats.departments }}</div>
+                </div>
+                <div class="stat-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="stat-bar"></div>
+        </div>
+
+        <div class="stat-card stat-success">
+            <div class="stat-content">
+                <div class="stat-info">
+                    <div class="stat-label">Subjects</div>
+                    <div class="stat-value">{{ stats.subjects }}</div>
+                </div>
+                <div class="stat-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="stat-bar"></div>
+        </div>
+
+        <div class="stat-card stat-warning">
+            <div class="stat-content">
+                <div class="stat-info">
+                    <div class="stat-label">Faculty</div>
+                    <div class="stat-value">{{ stats.faculty }}</div>
+                </div>
+                <div class="stat-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A1.5 1.5 0 0 0 18.54 8H17c-.8 0-1.54.37-2.01.99l-2.54 7.63H15v6h5zM12.5 11.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5S11 9.17 11 10s.67 1.5 1.5 1.5zM5.5 6c1.11 0 2-.89 2-2s-.89-2-2-2-2 .89-2 2 .89 2 2 2zm2 16v-7H9V9c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v6h1.5v7h4z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="stat-bar"></div>
+        </div>
+
+        <div class="stat-card stat-info">
+            <div class="stat-content">
+                <div class="stat-info">
+                    <div class="stat-label">Timetables</div>
+                    <div class="stat-value">{{ stats.timetables }}</div>
+                </div>
+                <div class="stat-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M10 10.02h5V21h-5zM17 21h3c1.1 0 2-.9 2-2v-9h-5v11zm3-18H5c-1.1 0-2 .9-2 2v3h19V5c0-1.1-.9-2-2-2zM3 19c0 1.1.9 2 2 2h3V10H3v9z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="stat-bar"></div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="content-grid">
+        <!-- Recent Timetables -->
+        <div class="content-card timetables-card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <span class="card-icon">🕐</span>
+                    Recent Timetables
+                </h2>
+                <a href="{{ url_for('timetable.timetables') }}" class="btn btn-sm btn-outline-light">View All</a>
+            </div>
+            <div class="card-content">
+                {% if recent_timetables %}
+                    <div class="table-container">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Department</th>
+                                    <th>Semester</th>
+                                    <th>Fitness Score</th>
+                                    <th>Created</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for timetable in recent_timetables %}
+                                <tr class="table-row">
+                                    <td class="table-cell">{{ timetable.name }}</td>
+                                    <td class="table-cell">{{ timetable.department_name or 'N/A' }}</td>
+                                    <td class="table-cell">{{ timetable.semester }}</td>
+                                    <td class="table-cell">
+                                        {% if timetable.fitness_score %}
+                                            <span class="badge bg-{% if timetable.fitness_score >= 0.8 %}success{% elif timetable.fitness_score >= 0.6 %}warning{% else %}danger{% endif %}">
+                                                {{ "%.2f"|format(timetable.fitness_score) }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="table-cell">{{ timetable.created_at|format_datetime }}</td>
+                                    <td class="table-cell">
+                                        <div class="action-buttons">
+                                            <a href="{{ url_for('timetable.view_timetable', id=timetable.id) }}" class="btn btn-sm btn-primary" title="View">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('edit_timetable', id=timetable.id) }}" class="btn btn-sm btn-warning" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon">📋</div>
+                        <h3>No Timetables Yet</h3>
+                        <p>Generate your first timetable to get started</p>
+                        <a href="{{ url_for('timetable.generate_timetable') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Generate Timetable
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="content-card actions-card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <span class="card-icon">⚡</span>
+                    Admin Quick Actions
+                </h2>
+            </div>
+            <div class="card-content">
+                <div class="action-grid">
+                    <a href="{{ url_for('timetable.generate_timetable') }}" class="action-item">
+                        <div class="action-icon bg-primary">
+                            <i class="fas fa-cog"></i>
+                        </div>
+                        <div class="action-content">
+                            <h4>Generate Timetable</h4>
+                            <p>Create a new optimized timetable</p>
+                        </div>
+                    </a>
+                    
+                    <a href="{{ url_for('departments') }}" class="action-item">
+                        <div class="action-icon bg-success">
+                            <i class="fas fa-building"></i>
+                        </div>
+                        <div class="action-content">
+                            <h4>Manage Departments</h4>
+                            <p>Add or edit departments</p>
+                        </div>
+                    </a>
+                    
+                    <a href="{{ url_for('faculty') }}" class="action-item">
+                        <div class="action-icon bg-warning">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="action-content">
+                            <h4>Manage Faculty</h4>
+                            <p>Add or edit faculty members</p>
+                        </div>
+                    </a>
+                    
+                    <a href="{{ url_for('users.user_management') }}" class="action-item">
+                        <div class="action-icon bg-info">
+                            <i class="fas fa-user-cog"></i>
+                        </div>
+                        <div class="action-content">
+                            <h4>User Management</h4>
+                            <p>Manage system users</p>
+                        </div>
+                    </a>
+
+                    <a href="{{ url_for('reports') }}" class="action-item">
+                        <div class="action-icon bg-danger">
+                            <i class="fas fa-chart-bar"></i>
+                        </div>
+                        <div class="action-content">
+                            <h4>View Reports</h4>
+                            <p>System analytics and reports</p>
+                        </div>
+                    </a>
+
+                    <a href="{{ url_for('upload_csv') }}" class="action-item">
+                        <div class="action-icon bg-secondary">
+                            <i class="fas fa-file-upload"></i>
+                        </div>
+                        <div class="action-content">
+                            <h4>Bulk Upload</h4>
+                            <p>Upload data via CSV</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Overview -->
+        <div class="content-card system-card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <span class="card-icon">📊</span>
+                    System Overview
+                </h2>
+            </div>
+            <div class="card-content">
+                <div class="system-stats">
+                    <div class="system-stat">
+                        <span class="stat-number">{{ stats.classrooms or 0 }}</span>
+                        <span class="stat-label">Classrooms</span>
+                    </div>
+                    <div class="system-stat">
+                        <span class="stat-number">{{ stats.batches or 0 }}</span>
+                        <span class="stat-label">Batches</span>
+                    </div>
+                    <div class="system-stat">
+                        <span class="stat-number">{{ stats.exams or 0 }}</span>
+                        <span class="stat-label">Exams</span>
+                    </div>
+                    <div class="system-stat">
+                        <span class="stat-number">{{ stats.events or 0 }}</span>
+                        <span class="stat-label">Events</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script>
+// Admin Dashboard specific JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    // Add hover effects to cards
+    const cards = document.querySelectorAll('.stat-card, .content-card');
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', () => {
+            card.style.transform = 'translateY(-2px)';
+            card.style.boxShadow = 'var(--shadow-lg)';
+        });
+        
+        card.addEventListener('mouseleave', () => {
+            card.style.transform = 'translateY(0)';
+            card.style.boxShadow = 'var(--shadow-md)';
+        });
+    });
+});
+</script>
+{% endblock %}

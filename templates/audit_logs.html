@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Logs - Intelligent Timetable System{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="header-content">
+            <div>
+                <h1 class="main-title">
+                    <i class="fas fa-clipboard-list title-icon"></i> Audit Logs
+                </h1>
+                <p class="welcome-text">Monitor system activities and changes</p>
+            </div>
+            <button class="action-btn action-cyan" onclick="exportLogs()">
+                <i class="fas fa-download"></i> Export Logs
+            </button>
+        </div>
+        <div class="header-glow"></div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="content-card mb-3">
+        <div class="card-content">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">User</label>
+                    <select class="form-select" name="user_id">
+                        <option value="">All Users</option>
+                        {% for user in users %}
+                        <option value="{{ user.id }}" {% if user_id|int == user.id %}selected{% endif %}>
+                            {{ user.username }}{% if user.full_name %} ({{ user.full_name }}){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Action</label>
+                    <select class="form-select" name="action">
+                        <option value="">All Actions</option>
+                        {% for action in actions %}
+                        <option value="{{ action }}" {% if request.args.get('action') == action %}selected{% endif %}>
+                            {{ action }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Table</label>
+                    <select class="form-select" name="table_name">
+                        <option value="">All Tables</option>
+                        {% for table in tables %}
+                        <option value="{{ table }}" {% if request.args.get('table_name') == table %}selected{% endif %}>
+                            {{ table }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" class="form-control" name="start_date" value="{{ start_date or '' }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">End Date</label>
+                    <input type="date" class="form-control" name="end_date" value="{{ end_date or '' }}">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="action-btn action-blue w-100">Filter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Audit Logs -->
+    <div class="content-card">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-list card-icon"></i> Audit Log Entries
+            </h5>
+            <div class="header-actions">
+                <span class="text-muted">Showing {{ logs|length }} of {{ total }} entries</span>
+            </div>
+        </div>
+        <div class="card-content">
+            {% if logs %}
+            <div class="table-container">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>User</th>
+                            <th>Action</th>
+                            <th>Table</th>
+                            <th>Record ID</th>
+                            <th>Changes</th>
+                            <th>IP Address</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr class="table-row">
+                            <td class="table-cell">
+                                <small>{{ log.created_at }}</small>
+                            </td>
+                            <td class="table-cell">
+                                {% if log.username %}
+                                {{ log.username }}{% if log.full_name %} ({{ log.full_name }}){% endif %}
+                                {% else %}
+                                <span class="text-muted">System</span>
+                                {% endif %}
+                            </td>
+                            <td class="table-cell">
+                                <span class="badge bg-{% if log.action == 'CREATE' %}success{% elif log.action == 'UPDATE' %}info{% elif log.action == 'DELETE' %}danger{% else %}secondary{% endif %}">
+                                    {{ log.action }}
+                                </span>
+                            </td>
+                            <td class="table-cell">{{ log.table_name }}</td>
+                            <td class="table-cell">
+                                {% if log.record_id %}
+                                <code>{{ log.record_id }}</code>
+                                {% else %}
+                                <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td class="table-cell">
+                                {% if log.changes %}
+                                <button class="action-btn action-blue btn-sm" 
+                                        onclick="showChanges('{{ log.changes|escapejs }}')">
+                                    <i class="fas fa-eye"></i> View Changes
+                                </button>
+                                {% else %}
+                                <span class="text-muted">No changes</span>
+                                {% endif %}
+                            </td>
+                            <td class="table-cell">
+                                <code>{{ log.ip_address or 'N/A' }}</code>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+            <nav aria-label="Audit log pagination" class="mt-3">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                        <a class="page-link" href="?page={{ page-1 }}{% for key, value in request.args.items() %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            Previous
+                        </a>
+                    </li>
+                    
+                    {% for p in range(1, total_pages + 1) %}
+                    <li class="page-item {% if p == page %}active{% endif %}">
+                        <a class="page-link" href="?page={{ p }}{% for key, value in request.args.items() %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            {{ p }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                    
+                    <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                        <a class="page-link" href="?page={{ page+1 }}{% for key, value in request.args.items() %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            Next
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-clipboard-list"></i>
+                </div>
+                <h4>No Audit Logs Found</h4>
+                <p>No audit log entries match the current filters.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Statistics Card -->
+    <div class="content-card mt-3">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-chart-bar card-icon"></i> Audit Log Statistics
+            </h5>
+        </div>
+        <div class="card-content">
+            <div class="row">
+                <div class="col-md-6">
+                    <canvas id="activityChart" width="400" height="200"></canvas>
+                </div>
+                <div class="col-md-6">
+                    <canvas id="actionChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Changes Modal -->
+<div class="modal fade" id="changesModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Change Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="changesContent" class="p-3 bg-light rounded"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Show changes in modal
+function showChanges(changesJson) {
+    try {
+        const changes = JSON.parse(changesJson);
+        const formatted = JSON.stringify(changes, null, 2);
+        document.getElementById('changesContent').textContent = formatted;
+    } catch (e) {
+        document.getElementById('changesContent').textContent = changesJson;
+    }
+    
+    const modal = new bootstrap.Modal(document.getElementById('changesModal'));
+    modal.show();
+}
+
+// Export logs function
+function exportLogs() {
+    const params = new URLSearchParams(window.location.search);
+    params.set('format', 'csv');
+    window.location.href = '/api/audit-logs/export?' + params.toString();
+}
+
+// Charts initialization
+document.addEventListener('DOMContentLoaded', function() {
+    // Activity timeline chart
+    const ctx1 = document.getElementById('activityChart').getContext('2d');
+    const activityChart = new Chart(ctx1, {
+        type: 'line',
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [{
+                label: 'Audit Events',
+                data: [12, 19, 8, 15, 22, 18, 10],
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1,
+                fill: true,
+                backgroundColor: 'rgba(75, 192, 192, 0.1)'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Weekly Activity Trend'
+                }
+            }
+        }
+    });
+
+    // Action distribution chart
+    const ctx2 = document.getElementById('actionChart').getContext('2d');
+    const actionChart = new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+            labels: ['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT'],
+            datasets: [{
+                data: [25, 40, 10, 15, 10],
+                backgroundColor: [
+                    'rgb(75, 192, 192)',
+                    'rgb(54, 162, 235)',
+                    'rgb(255, 99, 132)',
+                    'rgb(255, 205, 86)',
+                    'rgb(201, 203, 207)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Action Distribution'
+                }
+            }
+        }
+    });
+});
+</script>
+
+<style>
+.pagination .page-link {
+    background-color: var(--bg-card);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.pagination .page-item.active .page-link {
+    background-color: var(--accent-blue);
+    border-color: var(--accent-blue);
+}
+
+.pagination .page-link:hover {
+    background-color: var(--bg-hover);
+    border-color: var(--border-hover);
+}
+
+pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+</style>
+{% endblock %}

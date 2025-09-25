@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications - Intelligent Timetable System{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="header-content">
+            <div>
+                <h1 class="main-title">
+                    <i class="fas fa-bell title-icon"></i> Notifications
+                </h1>
+                <p class="welcome-text">Manage your system notifications</p>
+            </div>
+            <div class="header-actions">
+                <button class="action-btn action-blue" onclick="markAllRead()">
+                    <i class="fas fa-check-double"></i> Mark All Read
+                </button>
+            </div>
+        </div>
+        <div class="header-glow"></div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="content-card mb-3">
+        <div class="card-content">
+            <form method="GET" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Type</label>
+                    <select class="form-select" name="type">
+                        <option value="">All Types</option>
+                        <option value="info" {% if type_filter == 'info' %}selected{% endif %}>Information</option>
+                        <option value="warning" {% if type_filter == 'warning' %}selected{% endif %}>Warning</option>
+                        <option value="error" {% if type_filter == 'error' %}selected{% endif %}>Error</option>
+                        <option value="success" {% if type_filter == 'success' %}selected{% endif %}>Success</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" name="read">
+                        <option value="">All Notifications</option>
+                        <option value="0" {% if read_filter == '0' %}selected{% endif %}>Unread Only</option>
+                        <option value="1" {% if read_filter == '1' %}selected{% endif %}>Read Only</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="action-btn action-blue w-100">Apply Filters</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notifications List -->
+    <div class="content-card">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-list card-icon"></i> Notifications
+            </h5>
+            <div class="header-actions">
+                <span class="text-muted">Showing {{ notifications|length }} notifications</span>
+            </div>
+        </div>
+        <div class="card-content">
+            {% if notifications %}
+            <div class="notifications-list">
+                {% for notification in notifications %}
+                <div class="notification-item {% if not notification.is_read %}unread{% endif %}">
+                    <div class="notification-icon">
+                        <i class="fas fa-{% if notification.type == 'info' %}info-circle text-info{% elif notification.type == 'warning' %}exclamation-triangle text-warning{% elif notification.type == 'error' %}exclamation-circle text-danger{% elif notification.type == 'success' %}check-circle text-success{% else %}bell{% endif %}"></i>
+                    </div>
+                    <div class="notification-content">
+                        <h6 class="notification-title">{{ notification.title }}</h6>
+                        <p class="notification-message">{{ notification.message }}</p>
+                        <small class="notification-time">{{ notification.created_at }}</small>
+                    </div>
+                    <div class="notification-actions">
+                        {% if not notification.is_read %}
+                        <button class="action-btn action-blue btn-sm" onclick="markAsRead('{{ notification.id }}')"
+                                title="Mark as read">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        {% endif %}
+                        <button class="action-btn action-primary btn-sm" 
+                                onclick="deleteNotification('{{ notification.id }}')"
+                                title="Delete notification">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if total_pages > 1 %}
+            <nav aria-label="Notifications pagination" class="mt-3">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                        <a class="page-link" href="?page={{ page-1 }}{% for key, value in request.args.items() %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                            Previous
+                        </a>
+                    </li>
+                    
+                    {% for p in range(1, total_pages + 1) %}
+                    <li class="page-item {% if p == page %}active{% endif %}">
+                        <a class="page-link" href="?page={{ p }}{% for key, value in request.args.items() %}{% if key != 'page' %}&{{ key }}={{ value }}{%

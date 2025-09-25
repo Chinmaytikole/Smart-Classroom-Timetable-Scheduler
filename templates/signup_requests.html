@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Signup Requests - Intelligent Timetable System{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="header-section">
+        <div class="header-content">
+            <h1 class="main-title">
+                <span class="title-icon">📋</span>
+                <span class="title-text">Student Signup Requests</span>
+            </h1>
+        </div>
+    </div>
+
+    <div class="content-card">
+        <div class="card-header">
+            <h2 class="card-title">Pending Approval</h2>
+        </div>
+        <div class="card-content">
+            {% if requests %}
+            <div class="table-responsive">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Full Name</th>
+                            <th>Email</th>
+                            <th>Batch</th>
+                            <th>Roll Number</th>
+                            <th>Requested At</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in requests %}
+                        <tr>
+                            <td>{{ req.student_id }}</td>
+                            <td>{{ req.full_name }}</td>
+                            <td>{{ req.email }}</td>
+                            <td>{{ req.batch_name }}</td>
+                            <td>{{ req.roll_number }}</td>
+                            <td>{{ req.requested_at|format_datetime }}</td>
+                            <td>
+                                <div class="action-buttons">
+                                    <a href="{{ url_for('approve_signup', request_id=req.id) }}" 
+                                       class="btn btn-sm btn-success" title="Approve">
+                                        <i class="fas fa-check"></i> Approve
+                                    </a>
+                                    <a href="{{ url_for('reject_signup', request_id=req.id) }}" 
+                                       class="btn btn-sm btn-danger" title="Reject">
+                                        <i class="fas fa-times"></i> Reject
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">✅</div>
+                <h3>No Pending Requests</h3>
+                <p>All signup requests have been processed</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

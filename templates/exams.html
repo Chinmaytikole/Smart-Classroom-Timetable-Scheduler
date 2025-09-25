@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}Exams - Intelligent Timetable System{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="header-content">
+            <div>
+                <h1 class="main-title">
+                    <i class="fas fa-file-alt title-icon"></i> Exam Management
+                </h1>
+                <p class="welcome-text">Schedule and manage all examinations</p>
+            </div>
+            <a href="/exams/create" class="action-btn action-green">
+                <i class="fas fa-plus"></i> Schedule New Exam
+            </a>
+        </div>
+        <div class="header-glow"></div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="content-card mb-3">
+        <div class="card-content">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Department</label>
+                    <select class="form-select" name="department_id">
+                        <option value="">All Departments</option>
+                        {% for dept in departments %}
+                        <option value="{{ dept.id }}" {% if request.args.get('department_id')|int == dept.id %}selected{% endif %}>
+                            {{ dept.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Semester</label>
+                    <select class="form-select" name="semester">
+                        <option value="">All Semesters</option>
+                        {% for sem in range(1, 9) %}
+                        <option value="{{ sem }}" {% if request.args.get('semester')|int == sem %}selected{% endif %}>
+                            Semester {{ sem }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Date Range</label>
+                    <input type="date" class="form-control" name="start_date" value="{{ request.args.get('start_date', '') }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <input type="date" class="form-control" name="end_date" value="{{ request.args.get('end_date', '') }}">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="action-btn action-blue w-100">Filter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Exams List -->
+    <div class="content-card">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-list card-icon"></i> Scheduled Exams
+            </h5>
+            <div class="header-actions">
+                <!-- Change this line in your HTML -->
+            <a href="{{ url_for('exams.exam_calendar_page') }}" class="action-btn action-cyan">
+                <i class="fas fa-calendar"></i> Calendar View
+            </a>
+            </div>
+        </div>
+        <div class="card-content">
+            {% if exams %}
+            <div class="table-container">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>Exam Name</th>
+                            <th>Subject</th>
+                            <th>Department</th>
+                            <th>Semester</th>
+                            <th>Date & Time</th>
+                            <th>Classroom</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for exam in exams %}
+                        <tr class="table-row">
+                            <td class="table-cell fw-bold">{{ exam.name }}</td>
+                            <td class="table-cell">{{ exam.subject_name or 'N/A' }}</td>
+                            <td class="table-cell">{{ exam.department_name or 'N/A' }}</td>
+                            <td class="table-cell">
+                                {% if exam.semester %}
+                                <span class="badge bg-info">Semester {{ exam.semester }}</span>
+                                {% else %}
+                                <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td class="table-cell">
+                                {{ exam.exam_date }}<br>
+                                <small class="text-muted">{{ exam.start_time }} - {{ exam.end_time }}</small>
+                            </td>
+                            <td class="table-cell">{{ exam.classroom_name or 'N/A' }}</td>
+                            <td class="table-cell">
+                                <div class="action-buttons">
+                                    <a href="{{ url_for('exams.edit_exam', id=exam.id) }}" class="action-btn action-blue" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{{ url_for('exams.delete_exam', id=exam.id) }}" class="action-btn action-primary" title="Delete"
+                                       onclick="return confirm('Are you sure you want to delete this exam?')">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <h4>No Exams Scheduled</h4>
+                <p>Get started by scheduling your first exam.</p>
+                <a href="/exams/create" class="action-btn action-green">
+                    <i class="fas fa-plus"></i> Schedule Exam
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Upcoming Exams Card -->
+    <div class="content-card mt-3">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-clock card-icon"></i> Upcoming Exams (Next 7 Days)
+            </h5>
+        </div>
+        <div class="card-content">
+            {% if upcoming_exams %}
+            <div class="exam-grid">
+                {% for exam in upcoming_exams %}
+                <div class="exam-card">
+                    <div class="exam-date">
+                        <div class="exam-day">{{ exam.exam_date.strftime('%d') }}</div>
+                        <div class="exam-month">{{ exam.exam_date.strftime('%b') }}</div>
+                    </div>
+                    <div class="exam-details">
+                        <h6 class="exam-title">{{ exam.name }}</h6>
+                        <p class="exam-subject">{{ exam.subject_name }}</p>
+                        <div class="exam-meta">
+                            <span class="exam-time">{{ exam.start_time }} - {{ exam.end_time }}</span>
+                            <span class="exam-location">{{ exam.classroom_name }}</span>
+                        </div>
+                    </div>
+                    <div class="exam-actions">
+                        <span class="badge bg-{{ 'danger' if exam.days_remaining <= 1 else 'warning' if exam.days_remaining <= 3 else 'success' }}">
+                            {{ exam.days_remaining }} day{{ 's' if exam.days_remaining != 1 }} left
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <p>No upcoming exams in the next 7 days</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.exam-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.exam-card {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    border-left: 4px solid var(--accent-blue);
+    transition: all 0.3s ease;
+}
+
+.exam-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.exam-date {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    background: var(--accent-blue);
+    border-radius: 8px;
+    color: white;
+    margin-right: 1rem;
+}
+
+.exam-day {
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.exam-month {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    opacity: 0.9;
+}
+
+.exam-details {
+    flex: 1;
+}
+
+.exam-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem 0;
+    color: var(--text-primary);
+}
+
+.exam-subject {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: 0 0 0.5rem 0;
+}
+
+.exam-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.exam-time, .exam-location {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.exam-actions {
+    margin-left: 1rem;
+}
+</style>
+{% endblock %}

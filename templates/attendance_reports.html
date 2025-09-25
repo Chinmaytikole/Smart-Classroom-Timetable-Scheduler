@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance Reports - Intelligent Timetable System{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="header-content">
+            <div>
+                <h1 class="main-title">
+                    <i class="fas fa-chart-bar title-icon"></i> Attendance Reports
+                </h1>
+                <p class="welcome-text">Analyze attendance trends and patterns</p>
+            </div>
+            <a href="{{ url_for('attendance.attendance') }}" class="action-btn">
+                <i class="fas fa-arrow-left"></i> Back to Attendance
+            </a>
+        </div>
+        <div class="header-glow"></div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="content-card mb-3">
+        <div class="card-content">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Report Type</label>
+                    <select class="form-select" name="type" id="reportType">
+                        <option value="faculty" {% if report_type == 'faculty' %}selected{% endif %}>Faculty Attendance</option>
+                        <option value="batch" {% if report_type == 'batch' %}selected{% endif %}>Batch Attendance</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" class="form-control" name="start_date" value="{{ start_date.isoformat() }}">
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label">End Date</label>
+                    <input type="date" class="form-control" name="end_date" value="{{ end_date.isoformat() }}">
+                </div>
+                
+                <div class="col-md-3" id="facultyFilter" {% if report_type != 'faculty' %}style="display: none;"{% endif %}>
+                    <label class="form-label">Faculty</label>
+                    <select class="form-select" name="faculty_id">
+                        <option value="">All Faculty</option>
+                        {% for faculty in faculty_list %}
+                        <option value="{{ faculty.id }}" {% if selected_faculty|int == faculty.id %}selected{% endif %}>
+                            {{ faculty.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-3" id="batchFilter" {% if report_type != 'batch' %}style="display: none;"{% endif %}>
+                    <label class="form-label">Batch</label>
+                    <select class="form-select" name="batch_id">
+                        <option value="">All Batches</option>
+                        {% for batch in batches_list %}
+                        <option value="{{ batch.id }}" {% if selected_batch|int == batch.id %}selected{% endif %}>
+                            {{ batch.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="action-btn action-blue w-100">Generate Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Report Summary -->
+    <div class="content-card mb-3">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-chart-pie card-icon"></i> 
+                {% if report_type == 'faculty' %}Faculty{% else %}Batch{% endif %} Attendance Summary
+                ({{ start_date.strftime('%b %d, %Y') }} - {{ end_date.strftime('%b %d, %Y') }})
+            </h5>
+            <div class="header-actions">
+                <button class="action-btn action-cyan" onclick="exportReport()">
+                    <i class="fas fa-download"></i> Export
+                </button>
+            </div>
+        </div>
+        <div class="card-content">
+            {% if report_data %}
+            <div class="table-container">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>{% if report_type == 'faculty' %}Faculty{% else %}Batch{% endif %}</th>
+                            <th>Total Classes</th>
+                            <th>Present</th>
+                            <th>Absent</th>
+                            <th>Late</th>
+                            <th>Attendance Rate</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in report_data %}
+                        <tr class="table-row">
+                            <td class="table-cell fw-bold">
+                                {% if report_type == 'faculty' %}
+                                {{ item.name }}
+                                {% else %}
+                                {{ item.name }}
+                                {% endif %}
+                            </td>
+                            <td class="table-cell">{{ item.total_classes }}</td>
+                            <td class="table-cell">{{ item.present_classes }}</td>
+                            <td class="table-cell">{{ item.absent_classes }}</td>
+                            <td class="table-cell">{{ item.late_classes }}</td>
+                            <td class="table-cell">
+                                {% set attendance_rate = (item.present_classes / item.total_classes * 100) if item.total_classes > 0 else 0 %}
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar
+                                                {% if attendance_rate >= 90 %} bg-success
+                                                {% elif attendance_rate >= 75 %} bg-info
+                                                {% elif attendance_rate >= 60 %} bg-warning
+                                                {% else %} bg-danger {% endif %}"
+                                        role="progressbar"
+                                        style="width: {{ attendance_rate|default(0)|int }}%;"
+                                        aria-valuenow="{{ attendance_rate|default(0)|int }}"
+                                        aria-valuemin="0"
+                                        aria-valuemax="100">
+                                        
+                                        {{ "%.1f"|format(attendance_rate|default(0)) }}%
+                                    </div>
+                                    </div>
+
+                            </td>
+                            <td class="table-cell">
+                                <button class="action-btn action-blue" 
+                                        onclick="viewDetails('{{ item.id }}')">
+                                    <i class="fas fa-eye"></i> Details
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <h4>No Attendance Data</h4>
+                <p>No attendance records found for the selected period and filters.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="content-card">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-chart-line card-icon"></i> Attendance Trends
+            </h5>
+        </div>
+        <div class="card-content">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="chart-container">
+                        <canvas id="attendanceChart" width="400" height="300"></canvas>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="chart-container">
+                        <canvas id="comparisonChart" width="400" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Show/hide filters based on report type
+document.getElementById('reportType').addEventListener('change', function() {
+    const reportType = this.value;
+    document.getElementById('facultyFilter').style.display = reportType === 'faculty' ? 'block' : 'none';
+    document.getElementById('batchFilter').style.display = reportType === 'batch' ? 'block' : 'none';
+});
+
+// Export report function
+function exportReport() {
+    const reportType = document.getElementById('reportType').value;
+    const startDate = document.querySelector('input[name="start_date"]').value;
+    const endDate = document.querySelector('input[name="end_date"]').value;
+    const facultyId = document.querySelector('select[name="faculty_id"]').value;
+    const batchId = document.querySelector('select[name="batch_id"]').value;
+    
+    let url = `/api/attendance/export?type=${reportType}&start_date=${startDate}&end_date=${endDate}`;
+    
+    if (facultyId) {
+        url += `&faculty_id=${facultyId}`;
+    }
+    
+    if (batchId) {
+        url += `&batch_id=${batchId}`;
+    }
+    
+    window.location.href = url;
+}
+
+// View details function
+function viewDetails(id) {
+    const reportType = document.getElementById('reportType').value;
+    const startDate = document.querySelector('input[name="start_date"]').value;
+    const endDate = document.querySelector('input[name="end_date"]').value;
+    
+    alert(`Viewing detailed report for ${reportType} ID: ${id}\nFrom: ${startDate} To: ${endDate}`);
+    // Implement detailed view modal or page navigation
+}
+
+// Chart initialization
+document.addEventListener('DOMContentLoaded', function() {
+    // Sample chart data - replace with actual data from your backend
+    const ctx1 = document.getElementById('attendanceChart').getContext('2d');
+    const attendanceChart = new Chart(ctx1, {
+        type: 'line',
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+            datasets: [{
+                label: 'Attendance Rate (%)',
+                data: [85, 78, 92, 88, 95, 82],
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Weekly Attendance Trend'
+                }
+            }
+        }
+    });
+
+    const ctx2 = document.getElementById('comparisonChart').getContext('2d');
+    const comparisonChart = new Chart(ctx2, {
+        type: 'bar',
+        data: {
+            labels: ['Present', 'Absent', 'Late', 'Cancelled'],
+            datasets: [{
+                label: 'Attendance Distribution',
+                data: [65, 12, 8, 5],
+                backgroundColor: [
+                    'rgb(75, 192, 192)',
+                    'rgb(255, 99, 132)',
+                    'rgb(255, 205, 86)',
+                    'rgb(201, 203, 207)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Attendance Distribution'
+                }
+            }
+        }
+    });
+});
+</script>
+
+<style>
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+.progress {
+    background-color: var(--bg-secondary);
+    border-radius: 4px;
+}
+
+.progress-bar {
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+</style>
+{% endblock %}

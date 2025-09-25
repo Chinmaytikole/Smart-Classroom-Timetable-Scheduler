@@ -16,6 +16,9 @@
             </h1>
             <div class="welcome-text">
                 Welcome back, <span class="user-name">{{ session.full_name or session.username }}</span>
+                {% if session.role == 'admin' %}
+                <span class="badge bg-primary ms-2">Administrator</span>
+                {% endif %}
             </div>
         </div>
         <div class="header-glow"></div>
@@ -93,6 +96,7 @@
                     <span class="card-icon">🕐</span>
                     Recent Timetables
                 </h2>
+                <a href="{{ url_for('timetables') }}" class="btn btn-sm btn-outline-light">View All</a>
             </div>
             <div class="card-content">
                 {% if recent_timetables %}
@@ -116,16 +120,25 @@
                                     <td class="table-cell">{{ timetable.semester }}</td>
                                     <td class="table-cell">
                                         {% if timetable.fitness_score %}
-                                            <span class="fitness-badge fitness-{{ 'high' if timetable.fitness_score > 800 else 'medium' if timetable.fitness_score > 600 else 'low' }}">
-                                                {{ "%.1f"|format(timetable.fitness_score) }}
+                                            <span class="badge bg-{% if timetable.fitness_score >= 0.8 %}success{% elif timetable.fitness_score >= 0.6 %}warning{% else %}danger{% endif %}">
+                                                {{ "%.2f"|format(timetable.fitness_score) }}
                                             </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">N/A</span>
                                         {% endif %}
                                     </td>
-                                    <td class="table-cell">{{ timetable.created_at }}</td>
+                                    <td class="table-cell">{{ timetable.created_at|format_datetime }}</td>
                                     <td class="table-cell">
-                                        <a href="{{ url_for('view_timetable', timetable_id=timetable.id) }}" class="action-btn">
-                                            <span>👁️</span> View
-                                        </a>
+                                        <div class="action-buttons">
+                                            <a href="{{ url_for('view_timetable', id=timetable.id) }}" class="btn btn-sm btn-primary" title="View">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {% if session.role == 'admin' %}
+                                            <a href="{{ url_for('edit_timetable', id=timetable.id) }}" class="btn btn-sm btn-warning" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            {% endif %}
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -134,8 +147,101 @@
                     </div>
                 {% else %}
                     <div class="empty-state">
-                        <div class="empty-icon">📊</div>
-                        <p>No timetables generated yet</p>
+                        <div class="empty-icon">📋</div>
+                        <h3>No Timetables Yet</h3>
+                        <p>Generate your first timetable to get started</p>
+                        <a href="{{ url_for('generate_timetable') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Generate Timetable
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Upcoming Exams -->
+        <div class="content-card exams-card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <span class="card-icon">📝</span>
+                    Upcoming Exams
+                </h2>
+                <a href="{{ url_for('exams') }}" class="btn btn-sm btn-outline-light">View All</a>
+            </div>
+            <div class="card-content">
+                {% if upcoming_exams %}
+                    <div class="exam-list">
+                        {% for exam in upcoming_exams %}
+                        <div class="exam-item">
+                            <div class="exam-date">
+                                <div class="exam-day">{{ exam.exam_date|format_date('%d') }}</div>
+                                <div class="exam-month">{{ exam.exam_date|format_date('%b') }}</div>
+                            </div>
+                            <div class="exam-details">
+                                <h4 class="exam-title">{{ exam.name }}</h4>
+                                <p class="exam-subject">{{ exam.subject_name }}</p>
+                                <div class="exam-meta">
+                                    <span class="exam-time">{{ exam.start_time }} - {{ exam.end_time }}</span>
+                                    <span class="exam-location">{{ exam.classroom_name or exam.location }}</span>
+                                </div>
+                            </div>
+                            <div class="exam-actions">
+                                <span class="badge bg-{% if exam.days_remaining <= 1 %}danger{% elif exam.days_remaining <= 3 %}warning{% else %}info{% endif %}">
+                                    {{ exam.days_remaining }} day{{ 's' if exam.days_remaining != 1 }} left
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon">📅</div>
+                        <h3>No Upcoming Exams</h3>
+                        <p>Schedule exams to see them here</p>
+                        <a href="{{ url_for('exams') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Schedule Exam
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Upcoming Events -->
+        <div class="content-card events-card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <span class="card-icon">🎉</span>
+                    Upcoming Events
+                </h2>
+                <a href="{{ url_for('events.events') }}" class="btn btn-sm btn-outline-light">View All</a>
+            </div>
+            <div class="card-content">
+                {% if upcoming_events %}
+                    <div class="event-list">
+                        {% for event in upcoming_events %}
+                        <div class="event-item">
+                            <div class="event-date">
+                                <div class="event-day">{{ event.event_date|format_date('%d') }}</div>
+                                <div class="event-month">{{ event.event_date|format_date('%b') }}</div>
+                            </div>
+                            <div class="event-details">
+                                <h4 class="event-title">{{ event.title }}</h4>
+                                <p class="event-description">{{ event.description|truncate(60) }}</p>
+                                <div class="event-meta">
+                                    <span class="event-time">{{ event.start_time }} - {{ event.end_time }}</span>
+                                    <span class="event-location">{{ event.location }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon">📅</div>
+                        <h3>No Upcoming Events</h3>
+                        <p>Create events to see them here</p>
+                        <a href="{{ url_for('events.events') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Create Event
+                        </a>
                     </div>
                 {% endif %}
             </div>
@@ -145,56 +251,103 @@
         <div class="content-card actions-card">
             <div class="card-header">
                 <h2 class="card-title">
-                    <span class="card-icon">🚀</span>
+                    <span class="card-icon">⚡</span>
                     Quick Actions
                 </h2>
             </div>
             <div class="card-content">
-                <div class="actions-grid">
-                    <a href="{{ url_for('generate_timetable') }}" class="action-item action-primary">
-                        <div class="action-icon">⚙️</div>
-                        <span class="action-text">Generate Timetable</span>
-                        <div class="action-arrow">→</div>
+                <div class="action-grid">
+                    <a href="{{ url_for('generate_timetable') }}" class="action-item">
+                        <div class="action-icon bg-primary">
+                            <i class="fas fa-cog"></i>
+                        </div>
+                        <div class="action-content">
+                            <h4>Generate Timetable</h4>
+                            <p>Create a new optimized timetable</p>
+                        </div>
                     </a>
-
-                    <a href="{{ url_for('departments') }}" class="action-item action-blue">
-                        <div class="action-icon">🏢</div>
-                        <span class="action-text">Manage Departments</span>
-                        <div class="action-arrow">→</div>
+                    
+                    <a href="{{ url_for('exams') }}" class="action-item">
+                        <div class="action-icon bg-success">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <div class="action-content">
+                            <h4>Schedule Exam</h4>
+                            <p>Create a new exam schedule</p>
+                        </div>
                     </a>
-
-                    <a href="{{ url_for('subjects') }}" class="action-item action-cyan">
-                        <div class="action-icon">📚</div>
-                        <span class="action-text">Manage Subjects</span>
-                        <div class="action-arrow">→</div>
+                    
+                    <a href="{{ url_for('events.events') }}" class="action-item">
+                        <div class="action-icon bg-warning">
+                            <i class="fas fa-calendar"></i>
+                        </div>
+                        <div class="action-content">
+                            <h4>Create Event</h4>
+                            <p>Add a new event to calendar</p>
+                        </div>
                     </a>
-
-                    <a href="{{ url_for('faculty') }}" class="action-item action-orange">
-                        <div class="action-icon">👥</div>
-                        <span class="action-text">Manage Faculty</span>
-                        <div class="action-arrow">→</div>
-                    </a>
-
-                    <a href="{{ url_for('classrooms') }}" class="action-item action-purple">
-                        <div class="action-icon">🏫</div>
-                        <span class="action-text">Manage Classrooms</span>
-                        <div class="action-arrow">→</div>
-                    </a>
-
-                    <a href="{{ url_for('batches') }}" class="action-item action-pink">
-                        <div class="action-icon">🎓</div>
-                        <span class="action-text">Manage Batches</span>
-                        <div class="action-arrow">→</div>
-                    </a>
-
-                    <a href="{{ url_for('timetables') }}" class="action-item action-green">
-                        <div class="action-icon">📋</div>
-                        <span class="action-text">View All Timetables</span>
-                        <div class="action-arrow">→</div>
+                    
+                    <a href="{{ url_for('faculty') }}" class="action-item">
+                        <div class="action-icon bg-info">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="action-content">
+                            <h4>Manage Faculty</h4>
+                            <p>Add or edit faculty members</p>
+                        </div>
                     </a>
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script>
+// Dashboard specific JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    // Update notification count in navbar
+    const updateNotificationCount = () => {
+        fetch('/api/notifications/unread-count')
+            .then(response => response.json())
+            .then(data => {
+                const badge = document.querySelector('.notification-count');
+                if (data.count > 0) {
+                    if (badge) {
+                        badge.textContent = data.count;
+                    } else {
+                        const bell = document.querySelector('.notification-badge');
+                        if (bell) {
+                            const newBadge = document.createElement('span');
+                            newBadge.className = 'notification-count';
+                            newBadge.textContent = data.count;
+                            bell.appendChild(newBadge);
+                        }
+                    }
+                } else if (badge) {
+                    badge.remove();
+                }
+            });
+    };
+
+    // Update every 30 seconds
+    updateNotificationCount();
+    setInterval(updateNotificationCount, 30000);
+
+    // Add hover effects to cards
+    const cards = document.querySelectorAll('.stat-card, .content-card');
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', () => {
+            card.style.transform = 'translateY(-2px)';
+            card.style.boxShadow = 'var(--shadow-lg)';
+        });
+        
+        card.addEventListener('mouseleave', () => {
+            card.style.transform = 'translateY(0)';
+            card.style.boxShadow = 'var(--shadow-md)';
+        });
+    });
+});
+</script>
 {% endblock %}

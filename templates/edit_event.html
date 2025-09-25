@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Event - Intelligent Timetable System{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="header-content">
+            <div>
+                <h1 class="main-title">
+                    <i class="fas fa-edit title-icon"></i> Edit Event
+                </h1>
+                <p class="welcome-text">Update event details</p>
+            </div>
+            <a href="{{ url_for('events.events') }}" class="action-btn">
+                <i class="fas fa-arrow-left"></i> Back to Events
+            </a>
+        </div>
+        <div class="header-glow"></div>
+    </div>
+
+    <!-- Event Form -->
+    <div class="content-card">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-edit card-icon"></i> Event Details
+            </h5>
+        </div>
+        <div class="card-content">
+            <form method="POST" class="needs-validation" novalidate>
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label class="form-label">Event Title *</label>
+                            <input type="text" class="form-control" name="title" required 
+                                   value="{{ event.title }}">
+                            <div class="invalid-feedback">Please provide an event title.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Location</label>
+                            <input type="text" class="form-control" name="location" 
+                                   value="{{ event.location or '' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" name="description" rows="3">{{ event.description or '' }}</textarea>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Event Date *</label>
+                            <input type="date" class="form-control" name="event_date" required 
+                                   value="{{ event.event_date }}">
+                            <div class="invalid-feedback">Please select a valid event date.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">Start Time *</label>
+                            <input type="time" class="form-control" name="start_time" required
+                                   value="{{ event.start_time }}">
+                            <div class="invalid-feedback">Please select a start time.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">End Time *</label>
+                            <input type="time" class="form-control" name="end_time" required
+                                   value="{{ event.end_time }}">
+                            <div class="invalid-feedback">Please select an end time.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="{{ url_for('events.events') }}" class="action-btn me-md-2">Cancel</a>
+                    <button type="submit" class="action-btn action-blue">Update Event</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Event Information -->
+    <div class="content-card mt-3">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-info-circle card-icon"></i> Event Information
+            </h5>
+        </div>
+        <div class="card-content">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Created by:</strong> {{ event.created_by_username or 'System' }}</p>
+                    <p><strong>Created at:</strong> {{ event.created_at }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Last updated:</strong> {{ event.updated_at or 'Never' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const forms = document.querySelectorAll('.needs-validation');
+    
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            
+            form.classList.add('was-validated');
+        }, false);
+    });
+
+    // Time validation
+    const startTime = document.querySelector('input[name="start_time"]');
+    const endTime = document.querySelector('input[name="end_time"]');
+    
+    function validateTimes() {
+        if (startTime.value && endTime.value) {
+            if (startTime.value >= endTime.value) {
+                endTime.setCustomValidity('End time must be after start time');
+            } else {
+                endTime.setCustomValidity('');
+            }
+        }
+    }
+    
+    startTime.addEventListener('change', validateTimes);
+    endTime.addEventListener('change', validateTimes);
+});
+</script>
+{% endblock %}

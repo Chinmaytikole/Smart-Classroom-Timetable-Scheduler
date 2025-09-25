@@ -1,0 +1,339 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Intelligent Timetable System{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="header-content">
+            <div>
+                <h1 class="main-title">
+                    <i class="fas fa-user-circle title-icon"></i> User Profile
+                </h1>
+                <p class="welcome-text">Manage your account settings and preferences</p>
+            </div>
+        </div>
+        <div class="header-glow"></div>
+    </div>
+
+    <div class="content-grid">
+        <!-- Profile Information -->
+        <div class="content-card">
+            <div class="card-header">
+                <h5 class="card-title">
+                    <i class="fas fa-user card-icon"></i> Personal Information
+                </h5>
+            </div>
+            <div class="card-content">
+                <form method="POST" action="/profile/update" class="needs-validation" novalidate>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Username *</label>
+                                <input type="text" class="form-control" name="username" 
+                                       value="{{ user.username }}" required>
+                                <div class="invalid-feedback">Please provide a username.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Full Name</label>
+                                <input type="text" class="form-control" name="full_name" 
+                                       value="{{ user.full_name or '' }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Department</label>
+                        <select class="form-select" name="department_id" disabled>
+                            <option value="">Select Department</option>
+                            {% for dept in departments %}
+                            <option value="{{ dept.id }}" {% if user.department_id == dept.id %}selected{% endif %}>
+                                {{ dept.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Department assignment can only be changed by administrators.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Role</label>
+                        <input type="text" class="form-control" value="{{ user.role|upper }}" disabled>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="action-btn action-blue">Update Profile</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Change Password -->
+        <div class="content-card">
+            <div class="card-header">
+                <h5 class="card-title">
+                    <i class="fas fa-lock card-icon"></i> Change Password
+                </h5>
+            </div>
+            <div class="card-content">
+                <form method="POST" action="/profile/update" class="needs-validation" novalidate>
+                    <div class="mb-3">
+                        <label class="form-label">Current Password *</label>
+                        <input type="password" class="form-control" name="current_password" required>
+                        <div class="invalid-feedback">Please enter your current password.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">New Password *</label>
+                        <input type="password" class="form-control" name="new_password" required 
+                               pattern=".{8,}" title="Password must be at least 8 characters">
+                        <div class="invalid-feedback">Password must be at least 8 characters long.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Confirm New Password *</label>
+                        <input type="password" class="form-control" name="confirm_password" required>
+                        <div class="invalid-feedback">Passwords must match.</div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="action-btn action-green">Change Password</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Account Statistics -->
+    <div class="content-card mt-3">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-chart-bar card-icon"></i> Account Statistics
+            </h5>
+        </div>
+        <div class="card-content">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="stat-card stat-info">
+                        <div class="stat-content">
+                            <div class="stat-info">
+                                <div class="stat-label">Timetables Created</div>
+                                <div class="stat-value">12</div>
+                            </div>
+                            <div class="stat-icon">
+                                <i class="fas fa-table"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card stat-success">
+                        <div class="stat-content">
+                            <div class="stat-info">
+                                <div class="stat-label">Exams Scheduled</div>
+                                <div class="stat-value">8</div>
+                            </div>
+                            <div class="stat-icon">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card stat-warning">
+                        <div class="stat-content">
+                            <div class="stat-info">
+                                <div class="stat-label">Events Created</div>
+                                <div class="stat-value">5</div>
+                            </div>
+                            <div class="stat-icon">
+                                <i class="fas fa-calendar"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card stat-secondary">
+                        <div class="stat-content">
+                            <div class="stat-info">
+                                <div class="stat-label">Days Active</div>
+                                <div class="stat-value">47</div>
+                            </div>
+                            <div class="stat-icon">
+                                <i class="fas fa-calendar-check"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="content-card mt-3">
+        <div class="card-header">
+            <h5 class="card-title">
+                <i class="fas fa-history card-icon"></i> Recent Activity
+            </h5>
+        </div>
+        <div class="card-content">
+            <div class="activity-list">
+                <div class="activity-item">
+                    <div class="activity-icon">
+                        <i class="fas fa-table text-info"></i>
+                    </div>
+                    <div class="activity-content">
+                        <p>Generated timetable "Spring 2024 - CSE Semester 3"</p>
+                        <small class="text-muted">2 hours ago</small>
+                    </div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-icon">
+                        <i class="fas fa-file-alt text-success"></i>
+                    </div>
+                    <div class="activity-content">
+                        <p>Scheduled exam "Data Structures Midterm"</p>
+                        <small class="text-muted">1 day ago</small>
+                    </div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-icon">
+                        <i class="fas fa-calendar text-warning"></i>
+                    </div>
+                    <div class="activity-content">
+                        <p>Created event "Faculty Development Program"</p>
+                        <small class="text-muted">3 days ago</small>
+                    </div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-icon">
+                        <i class="fas fa-user-check text-primary"></i>
+                    </div>
+                    <div class="activity-content">
+                        <p>Updated profile information</p>
+                        <small class="text-muted">1 week ago</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Password confirmation validation
+document.addEventListener('DOMContentLoaded', function() {
+    const passwordForm = document.querySelector('form');
+    const newPassword = document.querySelector('input[name="new_password"]');
+    const confirmPassword = document.querySelector('input[name="confirm_password"]');
+    
+    function validatePassword() {
+        if (newPassword.value !== confirmPassword.value) {
+            confirmPassword.setCustomValidity('Passwords must match');
+        } else {
+            confirmPassword.setCustomValidity('');
+        }
+    }
+    
+    newPassword.addEventListener('change', validatePassword);
+    confirmPassword.addEventListener('keyup', validatePassword);
+    
+    // Form validation
+    const forms = document.querySelectorAll('.needs-validation');
+    
+    forms.forEach(form => {
+        form.addEventListener('submit', function(event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        });
+    });
+});
+</script>
+
+<style>
+.content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .content-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.stat-card {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+}
+
+.stat-card .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.stat-card .stat-label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.stat-card .stat-icon {
+    font-size: 2rem;
+    opacity: 0.7;
+}
+
+.stat-info { border-left: 4px solid var(--accent-blue); }
+.stat-success { border-left: 4px solid var(--accent-green); }
+.stat-warning { border-left: 4px solid var(--accent-orange); }
+.stat-secondary { border-left: 4px solid var(--text-muted); }
+
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+}
+
+.activity-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    font-size: 1.2rem;
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-content p {
+    margin: 0 0 0.25rem 0;
+    color: var(--text-primary);
+}
+
+.activity-content small {
+    color: var(--text-muted);
+}
+</style>
+{% endblock %}
